@@ -21,6 +21,10 @@ echo "<p>Consulta SQL para crear profesor:</p>";
 echo "<pre>INSERT INTO usuarios (nombre, apellido, email, contraseña, id_rol, activo, fecha_registro) 
 VALUES ('Juan', 'Martínez', 'juan.martinez@demquintanormal.cl', '$profesor_hash', 3, 1, NOW());</pre>";
 
+
+echo "<h3>Hash para estudiante123: </h3>";
+echo "<p>" . password_hash('estudiante123', PASSWORD_DEFAULT) . "</p>";
+
 // Probar conexión a la base de datos
 try {
     $db = Database::getInstance();
