@@ -208,6 +208,10 @@ $puede_modificar = has_role(ROL_ADMIN);
                                                         <a href="procesar.php?accion=activar&id=<?php echo $usuario['id_usuario']; ?>"
                                                             class="accion-btn btn-editar">Activar</a>
                                                     <?php endif; ?>
+
+                                                    <a href="procesar.php?accion=eliminar&id=<?php echo $usuario['id_usuario']; ?>"
+                                                        onclick="return confirm('¿Estás seguro de eliminar este usuario? Esta acción es irreversible.');"
+                                                        class="accion-btn btn-eliminar">Eliminar</a>
                                                 <?php endif; ?>
                                             <?php endif; ?>
                                         </td>

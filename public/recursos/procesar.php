@@ -16,7 +16,7 @@ require_once '../../includes/functions.php';
 require_login();
 if (!has_role(ROL_ADMIN)) {
     $_SESSION['error'] = "No tienes permisos para realizar esta acción";
-    redirect('../index.php');
+    redirect('listar.php');
     exit;
 }
 
@@ -70,10 +70,17 @@ switch ($accion) {
             exit;
         }
 
-        // Eliminar el recurso
-        $resultado = $db->query("DELETE FROM recursos WHERE id_recurso = ?", [$id_recurso]);
+        try {
+            // Iniciar transacción para asegurar la integridad de los datos
+            $conn = $db->getConnection();
+            $conn->begin_transaction();
 
-        if ($resultado) {
+            // Eliminar el recurso
+            $resultado = $db->query("DELETE FROM recursos WHERE id_recurso = ?", [$id_recurso]);
+
+            // Si todo está bien, confirmar los cambios
+            $conn->commit();
+
             // Registrar la acción
             $log_data = [
                 'id_usuario' => $_SESSION['usuario_id'],
@@ -86,10 +93,22 @@ switch ($accion) {
             ];
             $db->insert('log_acciones', $log_data);
 
+            // Configurar mensaje de éxito
             $_SESSION['success'] = "Recurso eliminado correctamente";
-        } else {
-            $_SESSION['error'] = "Error al eliminar el recurso: " . $db->getError();
+        } catch (Exception $e) {
+            // Si algo falla, revertir los cambios
+            if (isset($conn)) {
+                $conn->rollback();
+            }
+
+            // Registrar el error y mostrarlo
+            error_log("Error al eliminar recurso ID $id_recurso: " . $e->getMessage());
+            $_SESSION['error'] = "Error al eliminar el recurso: " . $e->getMessage();
         }
+
+        // Redireccionar en cualquier caso
+        redirect('listar.php');
+        exit;
         break;
 
     default:
