@@ -1,0 +1,252 @@
+/**
+ * Estilos específicos para el módulo de Reportes
+ */
+
+/* Tarjetas de reportes */
+.report-card {
+    display: flex;
+    align-items: center;
+    padding: 20px;
+    border-radius: 8px;
+    background-color: white;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    margin-bottom: 20px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    text-decoration: none;
+    color: inherit;
+}
+
+.report-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.report-icon {
+    width: 60px;
+    height: 60px;
+    background-color: rgba(74, 144, 226, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 20px;
+    color: var(--primary-color);
+    font-size: 24px;
+}
+
+.report-content {
+    flex: 1;
+}
+
+.report-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--dark-color);
+    margin-bottom: 5px;
+}
+
+.report-description {
+    color: var(--gray-color);
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.report-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+/* Estadísticas y resúmenes */
+.stat-highlight {
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 10px;
+}
+
+.stat-label {
+    font-size: 14px;
+    color: var(--gray-color);
+}
+
+.stats-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 15px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    margin-bottom: 15px;
+    min-width: 150px;
+    flex: 1;
+    margin-right: 15px;
+}
+
+.stat-item:last-child {
+    margin-right: 0;
+}
+
+/* Gráficos */
+.mini-chart {
+    height: 200px;
+    margin: 15px 0;
+}
+
+.chart-container {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    margin-bottom: 20px;
+}
+
+.chart-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--dark-color);
+    margin-bottom: 15px;
+}
+
+/* Filtros para reportes */
+.report-filters {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    margin-bottom: 20px;
+}
+
+.filter-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dark-color);
+    margin-bottom: 15px;
+}
+
+.filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 200px;
+}
+
+.filter-label {
+    font-size: 14px;
+    color: var(--dark-color);
+    margin-bottom: 5px;
+}
+
+.filter-select,
+.filter-input {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.filter-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+/* Tablas de reportes */
+.report-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.report-table th {
+    background-color: #f8f9fa;
+    color: var(--dark-color);
+    font-weight: 600;
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 2px solid #eee;
+}
+
+.report-table td {
+    padding: 10px 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.report-table tbody tr:hover {
+    background-color: rgba(74, 144, 226, 0.05);
+}
+
+.report-table .number-cell {
+    text-align: right;
+}
+
+/* Exportación de datos */
+.export-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.export-option {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    flex: 1;
+    min-width: 250px;
+    display: flex;
+    flex-direction: column;
+}
+
+.export-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--dark-color);
+    margin-bottom: 10px;
+}
+
+.export-description {
+    color: var(--gray-color);
+    font-size: 14px;
+    margin-bottom: 15px;
+    flex-grow: 1;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .stat-item {
+        width: calc(50% - 15px);
+        margin-right: 0;
+    }
+
+    .report-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .filter-row {
+        flex-direction: column;
+    }
+
+    .filter-group {
+        width: 100%;
+    }
+
+    .export-option {
+        width: 100%;
+    }
+}
