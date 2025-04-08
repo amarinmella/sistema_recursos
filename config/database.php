@@ -158,6 +158,11 @@ class Database
     }
 
     /**
+     * Método insert mejorado para la clase Database
+     * Reemplazar este método en config/database.php
+     */
+
+    /**
      * Insertar un registro en la base de datos
      */
     public function insert($table, $data)
@@ -167,16 +172,54 @@ class Database
             $placeholders = array_fill(0, count($fields), '?');
 
             $sql = "INSERT INTO {$table} (" . implode(', ', $fields) . ") 
-                    VALUES (" . implode(', ', $placeholders) . ")";
+                VALUES (" . implode(', ', $placeholders) . ")";
 
-            if (!$this->query($sql, array_values($data))) {
-                return false;
+            $stmt = $this->connection->prepare($sql);
+
+            if ($stmt === false) {
+                throw new Exception("Error al preparar la consulta: " . $this->connection->error);
             }
 
-            return $this->connection->insert_id;
+            // Determinar los tipos de datos para bind_param
+            $types = '';
+            foreach ($data as $value) {
+                if (is_int($value)) {
+                    $types .= 'i';
+                } elseif (is_float($value)) {
+                    $types .= 'd';
+                } elseif (is_string($value)) {
+                    $types .= 's';
+                } else {
+                    $types .= 'b';
+                }
+            }
+
+            // Preparar parámetros para bind_param
+            $bindParams = array_merge([$types], array_values($data));
+            $bindParamsRefs = [];
+
+            // Crear referencias para que bind_param funcione correctamente
+            foreach ($bindParams as $key => $value) {
+                $bindParamsRefs[$key] = &$bindParams[$key];
+            }
+
+            // Ejecutar bind_param
+            call_user_func_array([$stmt, 'bind_param'], $bindParamsRefs);
+
+            // Ejecutar la consulta
+            if (!$stmt->execute()) {
+                throw new Exception("Error al ejecutar la consulta: " . $stmt->error);
+            }
+
+            // Obtener el ID insertado
+            $insertId = $this->connection->insert_id;
+
+            $stmt->close();
+
+            return $insertId;
         } catch (Exception $e) {
             $this->error = $e->getMessage();
-            error_log($this->error);
+            error_log("Error en insert(): " . $this->error);
             return false;
         }
     }

@@ -210,6 +210,7 @@ $distribucion_por_tipo = $db->getRows($sql_distribucion, [
     <title>Uso de Recursos - Sistema de Gestión de Recursos</title>
     <link rel="stylesheet" href="../assets/css/styles.css">
     <link rel="stylesheet" href="../assets/css/reportes.css">
+    <link rel="stylesheet" href="../assets/css/pdf-buttons.css">
 </head>
 
 <body>
@@ -307,11 +308,20 @@ $distribucion_por_tipo = $db->getRows($sql_distribucion, [
                         </div>
                     </div>
 
+                    <!-- Modificación para agregar el botón de exportar a PDF -->
+                    <!-- Busca la sección de opciones de filtrado, específicamente el div "filter-actions" -->
+                    <!-- Debería verse así: -->
+
                     <div class="filter-actions">
                         <button type="submit" class="filtro-btn">Filtrar</button>
                         <a href="uso_recursos.php" class="filtro-btn btn-reset">Reiniciar</a>
-                        <a href="exportar.php?reporte=uso_recursos&fecha_inicio=<?php echo $fecha_inicio; ?>&fecha_fin=<?php echo $fecha_fin; ?>&tipo=<?php echo $id_tipo; ?>&usuario=<?php echo $id_usuario; ?>&estado=<?php echo $estado; ?>" class="btn btn-secondary">
-                            Exportar a CSV
+                        <a href="exportar_csv.php?reporte=uso_recursos&fecha_inicio=<?php echo $fecha_inicio; ?>&fecha_fin=<?php echo $fecha_fin; ?>&tipo=<?php echo $id_tipo; ?>&usuario=<?php echo $id_usuario; ?>&estado=<?php echo $estado; ?>" class="btn btn-secondary csv-btn">
+                            <i class="csv-icon"></i> Exportar a CSV
+                        </a>
+
+                        <!-- Agregar este nuevo botón para generar el PDF -->
+                        <a href="generar_pdf_uso_recursos.php?fecha_inicio=<?php echo $fecha_inicio; ?>&fecha_fin=<?php echo $fecha_fin; ?>&tipo=<?php echo $id_tipo; ?>&usuario=<?php echo $id_usuario; ?>&estado=<?php echo $estado; ?>&ordenar_por=<?php echo $ordenar_por; ?>&orden=<?php echo $orden; ?>" class="btn btn-primary" style="margin-left: 10px;">
+                            <i class="pdf-icon"></i> Generar PDF
                         </a>
                     </div>
                 </form>

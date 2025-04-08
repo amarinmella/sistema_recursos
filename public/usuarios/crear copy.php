@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Formulario para crear usuarios - VERSIÓN CORREGIDA
+ * Formulario para crear usuarios
  */
 
 // Iniciar sesión
@@ -102,39 +102,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'fecha_registro' => date('Y-m-d H:i:s')
     ];
 
-    try {
-        // Insertar en la base de datos
-        $resultado = $db->insert('usuarios', $data);
+    // Insertar en la base de datos
+    $resultado = $db->insert('usuarios', $data);
 
-        if ($resultado) {
-            // Obtener el ID del nuevo usuario
-            $id_nuevo_usuario = $resultado;
+    if ($resultado) {
+        // Registrar la acción
+        $log_data = [
+            'id_usuario' => $_SESSION['usuario_id'],
+            'accion' => 'crear',
+            'entidad' => 'usuarios',
+            'id_entidad' => $resultado,
+            'ip' => $_SERVER['REMOTE_ADDR'],
+            'fecha' => date('Y-m-d H:i:s')
+        ];
+        $db->insert('log_acciones', $log_data);
 
-            // Registrar la acción
-            $log_data = [
-                'id_usuario' => $_SESSION['usuario_id'],
-                'accion' => 'crear',
-                'entidad' => 'usuarios',
-                'id_entidad' => $id_nuevo_usuario,
-                'ip' => $_SERVER['REMOTE_ADDR'],
-                'fecha' => date('Y-m-d H:i:s')
-            ];
-            $db->insert('log_acciones', $log_data);
-
-            // Redireccionar con mensaje de éxito
-            $_SESSION['success'] = "Usuario creado correctamente";
-            redirect('listar.php');
-            exit;
-        } else {
-            // Mostrar error
-            $_SESSION['error'] = "Error al crear el usuario: " . $db->getError();
-            redirect('crear.php');
-            exit;
-        }
-    } catch (Exception $e) {
-        // Capturar y mostrar cualquier excepción
-        error_log("Error al crear usuario: " . $e->getMessage());
-        $_SESSION['error'] = "Error al crear el usuario: " . $e->getMessage();
+        // Redireccionar con mensaje de éxito
+        $_SESSION['success'] = "Usuario creado correctamente";
+        redirect('listar.php');
+        exit;
+    } else {
+        // Mostrar error
+        $_SESSION['error'] = "Error al crear el usuario: " . $db->getError();
         redirect('crear.php');
         exit;
     }
