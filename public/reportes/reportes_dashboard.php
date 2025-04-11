@@ -167,7 +167,7 @@ $estadisticas['total_mantenimientos'] = $resultado ? $resultado['total'] : 0;
                     </div>
                 </a>
 
-                <a href="mantenimiento_recursos.php" class="report-card">
+                <a href="reportes_mantenimiento.php" class="report-card">
                     <div class="report-icon">🔧</div>
                     <div class="report-content">
                         <div class="report-title">Mantenimiento de Recursos</div>
