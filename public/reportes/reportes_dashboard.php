@@ -176,7 +176,7 @@ $estadisticas['total_mantenimientos'] = $resultado ? $resultado['total'] : 0;
                     </div>
                 </a>
 
-                <a href="actividad_usuarios.php" class="report-card">
+                <a href="reportes_usuarios.php" class="report-card">
                     <div class="report-icon">👥</div>
                     <div class="report-content">
                         <div class="report-title">Actividad de Usuarios</div>
@@ -185,7 +185,7 @@ $estadisticas['total_mantenimientos'] = $resultado ? $resultado['total'] : 0;
                     </div>
                 </a>
 
-                <a href="disponibilidad.php" class="report-card">
+                <a href="reportes_disponibilidad_simple.php" class="report-card">
                     <div class="report-icon">⏰</div>
                     <div class="report-content">
                         <div class="report-title">Disponibilidad de Recursos</div>
