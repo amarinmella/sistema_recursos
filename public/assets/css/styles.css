@@ -382,6 +382,40 @@ table th {
     color: var(--danger-color);
 }
 
+.badge-info {
+    background-color: rgba(23, 162, 184, 0.1);
+    color: #17a2b8;
+}
+
+.badge-secondary {
+    background-color: rgba(108, 117, 125, 0.1);
+    color: var(--gray-color);
+}
+
+/* Botones de Acción */
+.accion-btn {
+    display: inline-block;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    text-decoration: none;
+    transition: background-color 0.3s;
+    margin-right: 5px;
+}
+
+.btn-editar {
+    background-color: rgba(74, 144, 226, 0.1);
+    color: var(--primary-color);
+}
+
+.btn-editar:hover {
+    background-color: rgba(74, 144, 226, 0.2);
+}
+
+.btn-eliminar {
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
 .btn-eliminar:hover {
     background-color: rgba(220, 53, 69, 0.2);
 }
@@ -417,15 +451,25 @@ table th {
     margin-top: 10px;
 }
 
-/* Estilos de Login */
+/* MODIFICADO: Estilos de Login para centrar el formulario */
+body.login-page {
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--light-color);
+}
+
 .login-container {
     display: flex;
     width: 100%;
-    max-width: 1200px;
-    margin: 0 20px;
+    max-width: 900px;
+    margin: 0 auto;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     border-radius: 20px;
     overflow: hidden;
+    height: auto;
+    position: relative;
 }
 
 .login-image {
@@ -467,6 +511,21 @@ table th {
     font-weight: 600;
 }
 
+.login-heading {
+    margin-bottom: 25px;
+}
+
+.login-heading h1 {
+    font-size: 24px;
+    color: var(--dark-color);
+    margin-bottom: 10px;
+}
+
+.login-heading p {
+    color: var(--gray-color);
+    font-size: 14px;
+}
+
 .login-button {
     width: 100%;
     padding: 14px;
@@ -476,9 +535,14 @@ table th {
     border-radius: 8px;
     font-size: 16px;
     cursor: pointer;
+    margin-top: 10px;
     margin-bottom: 20px;
     transition: background-color 0.3s;
     font-weight: 600;
+}
+
+.login-button:hover {
+    background-color: #3a80d2;
 }
 
 .login-links {
@@ -492,6 +556,11 @@ table th {
     color: #4a90e2;
     text-decoration: none;
     transition: color 0.3s;
+}
+
+.login-links a:hover {
+    color: #3a80d2;
+    text-decoration: underline;
 }
 
 /* Responsive */
@@ -526,6 +595,9 @@ table th {
 
     .login-container {
         flex-direction: column;
+        width: 90%;
+        max-width: 450px;
+        height: auto;
     }
 
     .login-image {
@@ -534,6 +606,7 @@ table th {
 
     .login-form {
         border-radius: 20px;
+        padding: 30px;
     }
 }
 
@@ -560,39 +633,3 @@ table th {
     margin-top: 5px;
     animation: fadeIn 0.2s ease-in-out;
 }
-
-color: var(--danger-color);
-}
-
-.badge-info {
-    background-color: rgba(23, 162, 184, 0.1);
-    color: #17a2b8;
-}
-
-.badge-secondary {
-    background-color: rgba(108, 117, 125, 0.1);
-    color: var(--gray-color);
-}
-
-/* Botones de Acción */
-.accion-btn {
-    display: inline-block;
-    padding: 6px 10px;
-    border-radius: 4px;
-    font-size: 12px;
-    text-decoration: none;
-    transition: background-color 0.3s;
-    margin-right: 5px;
-}
-
-.btn-editar {
-    background-color: rgba(74, 144, 226, 0.1);
-    color: var(--primary-color);
-}
-
-.btn-editar:hover {
-    background-color: rgba(74, 144, 226, 0.2);
-}
-
-.btn-eliminar {
-    background-color: rgba(220, 53, 69, 0.1);

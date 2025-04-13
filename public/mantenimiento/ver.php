@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Ver detalles de mantenimiento
  */
@@ -82,14 +83,14 @@ if (isset($_POST['accion']) && $_POST['accion'] === 'completar') {
         'estado' => 'completado',
         'fecha_fin' => $fecha_fin
     ], 'id_mantenimiento = ?', [$id_mantenimiento]);
-    
+
     if ($resultado) {
         // Actualizar el estado del recurso a disponible
         $db->update('recursos', [
             'estado' => 'disponible',
             'disponible' => 1
         ], 'id_recurso = ?', [$mantenimiento['id_recurso']]);
-        
+
         // Registrar la acción
         $log_data = [
             'id_usuario' => $_SESSION['usuario_id'],
@@ -101,13 +102,12 @@ if (isset($_POST['accion']) && $_POST['accion'] === 'completar') {
             'detalles' => 'Mantenimiento completado'
         ];
         $db->insert('log_acciones', $log_data);
-        
+
         // Redireccionar con mensaje de éxito
         $_SESSION['success'] = "Mantenimiento marcado como completado correctamente";
         redirect('ver.php?id=' . $id_mantenimiento);
         exit;
     } else {
-        // Mostrar error
         $_SESSION['error'] = "Error al completar el mantenimiento: " . $db->getError();
         redirect('ver.php?id=' . $id_mantenimiento);
         exit;
@@ -120,14 +120,14 @@ if (isset($_POST['accion']) && $_POST['accion'] === 'iniciar') {
     $resultado = $db->update('mantenimiento', [
         'estado' => 'en progreso'
     ], 'id_mantenimiento = ?', [$id_mantenimiento]);
-    
+
     if ($resultado) {
         // Asegurar que el recurso esté marcado como en mantenimiento
         $db->update('recursos', [
             'estado' => 'mantenimiento',
             'disponible' => 0
         ], 'id_recurso = ?', [$mantenimiento['id_recurso']]);
-        
+
         // Registrar la acción
         $log_data = [
             'id_usuario' => $_SESSION['usuario_id'],
@@ -139,13 +139,11 @@ if (isset($_POST['accion']) && $_POST['accion'] === 'iniciar') {
             'detalles' => 'Mantenimiento iniciado'
         ];
         $db->insert('log_acciones', $log_data);
-        
-        // Redireccionar con mensaje de éxito
+
         $_SESSION['success'] = "Mantenimiento iniciado correctamente";
         redirect('ver.php?id=' . $id_mantenimiento);
         exit;
     } else {
-        // Mostrar error
         $_SESSION['error'] = "Error al iniciar el mantenimiento: " . $db->getError();
         redirect('ver.php?id=' . $id_mantenimiento);
         exit;
@@ -160,22 +158,21 @@ if (isset($_POST['accion']) && $_POST['accion'] === 'cancelar') {
         redirect('ver.php?id=' . $id_mantenimiento);
         exit;
     }
-    
-    // Actualizar el estado del mantenimiento a completado (pero marcando como cancelado en detalles)
+
     $fecha_fin = date('Y-m-d H:i:s');
     $resultado = $db->update('mantenimiento', [
         'estado' => 'completado',
         'fecha_fin' => $fecha_fin,
         'descripcion' => $mantenimiento['descripcion'] . "\n\n[CANCELADO: " . date('d/m/Y H:i') . "]"
     ], 'id_mantenimiento = ?', [$id_mantenimiento]);
-    
+
     if ($resultado) {
         // Actualizar el estado del recurso a disponible
         $db->update('recursos', [
             'estado' => 'disponible',
             'disponible' => 1
         ], 'id_recurso = ?', [$mantenimiento['id_recurso']]);
-        
+
         // Registrar la acción
         $log_data = [
             'id_usuario' => $_SESSION['usuario_id'],
@@ -187,13 +184,11 @@ if (isset($_POST['accion']) && $_POST['accion'] === 'cancelar') {
             'detalles' => 'Mantenimiento cancelado'
         ];
         $db->insert('log_acciones', $log_data);
-        
-        // Redireccionar con mensaje de éxito
+
         $_SESSION['success'] = "Mantenimiento cancelado correctamente";
         redirect('ver.php?id=' . $id_mantenimiento);
         exit;
     } else {
-        // Mostrar error
         $_SESSION['error'] = "Error al cancelar el mantenimiento: " . $db->getError();
         redirect('ver.php?id=' . $id_mantenimiento);
         exit;
@@ -201,7 +196,8 @@ if (isset($_POST['accion']) && $_POST['accion'] === 'cancelar') {
 }
 
 // Función para obtener clase CSS según el estado
-function getEstadoClass($estado) {
+function getEstadoClass($estado)
+{
     switch ($estado) {
         case 'pendiente':
             return 'badge-warning';
@@ -221,12 +217,12 @@ $sql_reservas = "
     FROM reservas r
     JOIN usuarios u ON r.id_usuario = u.id_usuario
     WHERE r.id_recurso = ?
-    AND (
-        (r.fecha_inicio BETWEEN ? AND IFNULL(?, NOW() + INTERVAL 30 DAY))
-        OR (r.fecha_fin BETWEEN ? AND IFNULL(?, NOW() + INTERVAL 30 DAY))
-        OR (r.fecha_inicio <= ? AND r.fecha_fin >= ?)
-    )
-    AND r.estado IN ('pendiente', 'confirmada')
+      AND (
+            (r.fecha_inicio BETWEEN ? AND IFNULL(?, NOW() + INTERVAL 30 DAY))
+         OR (r.fecha_fin BETWEEN ? AND IFNULL(?, NOW() + INTERVAL 30 DAY))
+         OR (r.fecha_inicio <= ? AND r.fecha_fin >= ?)
+      )
+      AND r.estado IN ('pendiente', 'confirmada')
     ORDER BY r.fecha_inicio
 ";
 
@@ -242,6 +238,7 @@ $reservas_afectadas = $db->getRows($sql_reservas, [
 ?>
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -257,27 +254,27 @@ $reservas_afectadas = $db->getRows($sql_reservas, [
             text-align: center;
             min-width: 100px;
         }
-        
+
         .info-section {
             margin-bottom: 20px;
             padding-bottom: 20px;
             border-bottom: 1px solid #eee;
         }
-        
+
         .info-section:last-child {
             border-bottom: none;
         }
-        
+
         .info-label {
             font-weight: 600;
             color: var(--dark-color);
             margin-bottom: 5px;
         }
-        
+
         .info-value {
             margin-bottom: 15px;
         }
-        
+
         .descripcion-box {
             background-color: #f9f9f9;
             padding: 15px;
@@ -285,8 +282,14 @@ $reservas_afectadas = $db->getRows($sql_reservas, [
             margin-top: 10px;
             white-space: pre-line;
         }
+
+        .form-actions form {
+            display: inline-block;
+            margin-right: 10px;
+        }
     </style>
 </head>
+
 <body>
     <div class="dashboard">
         <div class="sidebar">
@@ -297,18 +300,18 @@ $reservas_afectadas = $db->getRows($sql_reservas, [
             <div class="sidebar-nav">
                 <a href="../admin/dashboard.php" class="nav-item">Dashboard</a>
                 <?php if (has_role([ROL_ADMIN, ROL_ACADEMICO])): ?>
-                <a href="../usuarios/listar.php" class="nav-item">Usuarios</a>
+                    <a href="../usuarios/listar.php" class="nav-item">Usuarios</a>
                 <?php endif; ?>
                 <a href="../recursos/listar.php" class="nav-item">Recursos</a>
                 <a href="../reservas/listar.php" class="nav-item">Reservas</a>
                 <a href="../reservas/calendario.php" class="nav-item">Calendario</a>
                 <?php if (has_role([ROL_ADMIN, ROL_ACADEMICO])): ?>
-                <a href="../mantenimiento/listar.php" class="nav-item active">Mantenimiento</a>
-                <a href="../reportes/reportes_dashboard.php" class="nav-item">Reportes</a>
+                    <a href="../mantenimiento/listar.php" class="nav-item active">Mantenimiento</a>
+                    <a href="../reportes/reportes_dashboard.php" class="nav-item">Reportes</a>
                 <?php endif; ?>
             </div>
         </div>
-        
+
         <div class="content">
             <div class="top-bar">
                 <h1>Detalles de Mantenimiento</h1>
@@ -317,14 +320,14 @@ $reservas_afectadas = $db->getRows($sql_reservas, [
                     <a href="../logout.php" class="logout-btn">Cerrar sesión</a>
                 </div>
             </div>
-            
+
             <?php echo $mensaje; ?>
-            
+
             <div style="margin-bottom: 20px;">
                 <a href="listar.php" class="btn btn-secondary">&laquo; Volver a la lista</a>
                 <a href="editar.php?id=<?php echo $id_mantenimiento; ?>" class="btn btn-primary">Editar Mantenimiento</a>
             </div>
-            
+
             <div class="card">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h2 class="card-title">Mantenimiento #<?php echo $id_mantenimiento; ?></h2>
@@ -332,7 +335,7 @@ $reservas_afectadas = $db->getRows($sql_reservas, [
                         <?php echo ucfirst($mantenimiento['estado']); ?>
                     </div>
                 </div>
-                
+
                 <div class="info-section">
                     <div class="info-label">Recurso:</div>
                     <div class="info-value">
@@ -343,46 +346,45 @@ $reservas_afectadas = $db->getRows($sql_reservas, [
                         <br>
                         <small>Tipo: <?php echo htmlspecialchars($mantenimiento['tipo_recurso']); ?></small>
                         <br>
-                        <small>Estado actual del recurso: 
+                        <small>Estado actual del recurso:
                             <span class="badge <?php echo $mantenimiento['recurso_estado'] === 'disponible' ? 'badge-success' : 'badge-warning'; ?>">
                                 <?php echo ucfirst($mantenimiento['recurso_estado']); ?>
                             </span>
                         </small>
                     </div>
-                    
+
                     <div class="info-label">Responsable:</div>
                     <div class="info-value">
                         <?php echo htmlspecialchars($mantenimiento['usuario_nombre'] . ' ' . $mantenimiento['usuario_apellido']); ?>
                     </div>
                 </div>
-                
+
                 <div class="info-section">
                     <div class="info-label">Fecha de Inicio:</div>
                     <div class="info-value">
                         <?php echo date('d/m/Y H:i', strtotime($mantenimiento['fecha_inicio'])); ?>
                     </div>
-                    
+
                     <div class="info-label">Fecha de Finalización:</div>
                     <div class="info-value">
                         <?php if ($mantenimiento['fecha_fin']): ?>
                             <?php echo date('d/m/Y H:i', strtotime($mantenimiento['fecha_fin'])); ?>
                             <br>
-                            <small>Duración: 
-                                <?php 
+                            <small>Duración:
+                                <?php
                                 $inicio = new DateTime($mantenimiento['fecha_inicio']);
                                 $fin = new DateTime($mantenimiento['fecha_fin']);
                                 $duracion = $inicio->diff($fin);
-                                
+
                                 if ($duracion->days > 0) {
                                     echo $duracion->days . ' día(s), ';
                                 }
-                                
+
                                 echo $duracion->h . ' hora(s), ' . $duracion->i . ' minuto(s)';
                                 ?>
                             </small>
                         <?php else: ?>
                             <span class="badge badge-warning">No finalizado</span>
-                            
                             <?php if ($mantenimiento['estado'] !== 'completado'): ?>
                                 <form action="" method="POST" style="display: inline-block; margin-left: 10px;">
                                     <input type="hidden" name="accion" value="completar">
@@ -393,13 +395,13 @@ $reservas_afectadas = $db->getRows($sql_reservas, [
                             <?php endif; ?>
                         <?php endif; ?>
                     </div>
-                    
+
                     <div class="info-label">Fecha de Registro:</div>
                     <div class="info-value">
                         <?php echo date('d/m/Y H:i', strtotime($mantenimiento['fecha_registro'])); ?>
                     </div>
                 </div>
-                
+
                 <div class="info-section">
                     <div class="info-label">Descripción del Mantenimiento:</div>
                     <div class="info-value">
@@ -408,31 +410,37 @@ $reservas_afectadas = $db->getRows($sql_reservas, [
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="form-actions" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
                     <?php if ($mantenimiento['estado'] === 'pendiente'): ?>
-                        <form action="" method="POST" style="display: inline-block; margin-right: 10px;">
+                        <form action="" method="POST">
                             <input type="hidden" name="accion" value="cancelar">
                             <button type="submit" class="btn btn-danger" onclick="return confirm('¿Estás seguro de cancelar este mantenimiento? El recurso volverá a estar disponible.')">
                                 Cancelar Mantenimiento
                             </button>
                         </form>
+                        <form action="" method="POST">
+                            <input type="hidden" name="accion" value="iniciar">
+                            <button type="submit" class="btn btn-primary" onclick="return confirm('¿Estás seguro de iniciar este mantenimiento?')">
+                                Iniciar Mantenimiento
+                            </button>
+                        </form>
                     <?php endif; ?>
-                    
+
                     <a href="editar.php?id=<?php echo $id_mantenimiento; ?>" class="btn btn-secondary">
                         Editar Información
                     </a>
                 </div>
             </div>
-            
+
             <?php if (!empty($reservas_afectadas)): ?>
                 <div class="card">
                     <h2 class="card-title">Reservas Afectadas por este Mantenimiento</h2>
-                    
+
                     <div class="alert alert-warning">
                         <strong>Nota:</strong> Las siguientes reservas podrían verse afectadas por este mantenimiento.
                     </div>
-                    
+
                     <div class="table-container">
                         <table>
                             <thead>
@@ -469,11 +477,11 @@ $reservas_afectadas = $db->getRows($sql_reservas, [
                     </div>
                 </div>
             <?php endif; ?>
-            
+
             <?php if (!empty($historial)): ?>
                 <div class="card">
                     <h2 class="card-title">Historial de Acciones</h2>
-                    
+
                     <div class="table-container">
                         <table>
                             <thead>
@@ -503,13 +511,5 @@ $reservas_afectadas = $db->getRows($sql_reservas, [
 
     <script src="../assets/js/main.js"></script>
 </body>
-</html>" value="iniciar">
-                            <button type="submit" class="btn btn-primary" onclick="return confirm('¿Estás seguro de iniciar este mantenimiento?')">
-                                Iniciar Mantenimiento
-                            </button>
-                        </form>
-                    <?php endif; ?>
-                    
-                    <?php if ($mantenimiento['estado'] !== 'completado'): ?>
-                        <form action="" method="POST" style="display: inline-block; margin-right: 10px;">
-                            <input type="hidden" name="accion
+
+</html>

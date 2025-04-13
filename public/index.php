@@ -45,7 +45,7 @@ if (isset($_SESSION['usuario_id'])) {
     <link rel="stylesheet" href="./assets/css/styles.css">
 </head>
 
-<body>
+<body class="login-page">
     <div class="login-container">
         <div class="login-image">
             <!-- Imagen calendario o ilustración -->
@@ -93,7 +93,7 @@ if (isset($_SESSION['usuario_id'])) {
 
                 <div class="login-links">
                     <a href="registro.php">Crear una cuenta</a>
-                    <a href="recuperar_password.php">Olvidaste la contraseña</a>
+                    <a href="recuperar_contrasena.php">Olvidaste la contraseña</a>
                 </div>
             </form>
         </div>

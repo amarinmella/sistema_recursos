@@ -4,6 +4,9 @@
  * Archivo de configuración general del sistema
  */
 
+// Define la URL base de tu aplicación (ajusta este valor a tu entorno)
+define('BASE_URL', 'http://localhost/gestion_recursos_digitales-main/');
+
 // Configuración de zona horaria
 date_default_timezone_set('America/Santiago');
 
