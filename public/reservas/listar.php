@@ -99,10 +99,10 @@ if (isset($_SESSION['success'])) {
     unset($_SESSION['error']);
 }
 
-// Determinar si el usuario puede crear reservas
-$puede_crear = true; // Todos los usuarios pueden crear reservas
+// Determinar si el usuario puede crear reservas (todos pueden)
+$puede_crear = true;
 
-// Determinar si el usuario puede gestionar reservas de otros
+// Determinar si el usuario puede gestionar reservas de otros (Admin o Académico)
 $puede_gestionar = has_role([ROL_ADMIN, ROL_ACADEMICO]);
 ?>
 <!DOCTYPE html>
@@ -260,19 +260,28 @@ $puede_gestionar = has_role([ROL_ADMIN, ROL_ACADEMICO]);
                                         </td>
                                         <td><?php echo format_date($reserva['fecha_creacion']); ?></td>
                                         <td>
+                                            <!-- Siempre se muestra la acción de Ver -->
                                             <a href="ver.php?id=<?php echo $reserva['id_reserva']; ?>" class="accion-btn btn-editar">Ver</a>
 
                                             <?php
-                                            // Mostrar opciones de gestión según permisos y estado de la reserva
-                                            $es_propietario = $reserva['id_usuario'] == $_SESSION['usuario_id'];
+                                            // Definir permisos: el usuario es propietario o tiene permisos de gestión
+                                            $es_propietario = ($reserva['id_usuario'] == $_SESSION['usuario_id']);
+                                            // Permite editar si el usuario es propietario o tiene permisos de gestión y la reserva está en estado pendiente o confirmada
                                             $puede_editar = ($es_propietario || $puede_gestionar) && in_array($reserva['estado'], ['pendiente', 'confirmada']);
-                                            $puede_cancelar = ($es_propietario || $puede_gestionar) && in_array($reserva['estado'], ['pendiente', 'confirmada']);
+                                            // Permite eliminar si es propietario o tiene permisos de gestión (se puede eliminar siempre que la reserva no haya iniciado; elimina la restricción de fecha si así lo deseas)
+                                            $puede_eliminar = ($es_propietario || $puede_gestionar) && (strtotime($reserva['fecha_inicio']) > time());
+                                            // Otras acciones
+                                            $puede_cancelar = ($es_propietario || $puede_gestionar) && in_array($reserva['estado'], ['pendiente', 'confirmada']) && (strtotime($reserva['fecha_fin']) > time());
                                             $puede_confirmar = $puede_gestionar && $reserva['estado'] === 'pendiente';
                                             $puede_completar = $puede_gestionar && $reserva['estado'] === 'confirmada';
-
-                                            if ($puede_editar && strtotime($reserva['fecha_inicio']) > time()):
                                             ?>
+
+                                            <?php if ($puede_editar && strtotime($reserva['fecha_inicio']) > time()): ?>
                                                 <a href="editar.php?id=<?php echo $reserva['id_reserva']; ?>" class="accion-btn btn-editar">Editar</a>
+                                            <?php endif; ?>
+
+                                            <?php if ($puede_eliminar): ?>
+                                                <a href="eliminar.php?id=<?php echo $reserva['id_reserva']; ?>" class="accion-btn btn-eliminar" onclick="return confirm('¿Estás seguro de eliminar esta reserva?')">Eliminar</a>
                                             <?php endif; ?>
 
                                             <?php if ($puede_cancelar && strtotime($reserva['fecha_fin']) > time()): ?>

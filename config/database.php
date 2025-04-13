@@ -16,8 +16,8 @@ class Database
     {
         // Configuración de la base de datos
         $host = 'localhost';
-        $user = 'root';        // Cambiar en producción
-        $pass = '';            // Cambiar en producción
+        $user = 'root';       // Cambiar en producción
+        $pass = '';           // Cambiar en producción
         $name = 'sistema_recursos';
         $charset = 'utf8mb4';
 
@@ -158,11 +158,6 @@ class Database
     }
 
     /**
-     * Método insert mejorado para la clase Database
-     * Reemplazar este método en config/database.php
-     */
-
-    /**
      * Insertar un registro en la base de datos
      */
     public function insert($table, $data)
@@ -171,8 +166,8 @@ class Database
             $fields = array_keys($data);
             $placeholders = array_fill(0, count($fields), '?');
 
-            $sql = "INSERT INTO {$table} (" . implode(', ', $fields) . ") 
-                VALUES (" . implode(', ', $placeholders) . ")";
+            $sql = "INSERT INTO {$table} (" . implode(', ', $fields) . ")
+                    VALUES (" . implode(', ', $placeholders) . ")";
 
             $stmt = $this->connection->prepare($sql);
 
@@ -213,7 +208,6 @@ class Database
 
             // Obtener el ID insertado
             $insertId = $this->connection->insert_id;
-
             $stmt->close();
 
             return $insertId;
@@ -248,6 +242,60 @@ class Database
         } catch (Exception $e) {
             $this->error = $e->getMessage();
             error_log($this->error);
+            return false;
+        }
+    }
+
+    /**
+     * Eliminar registros de la base de datos
+     *
+     * @param string $table      Nombre de la tabla
+     * @param string $condition  Condición del WHERE (ej. "id = ?")
+     * @param array  $params     Parámetros para bind_param
+     * @return mixed Número de filas afectadas o false en error
+     */
+    public function delete($table, $condition, $params = [])
+    {
+        try {
+            $sql = "DELETE FROM {$table} WHERE {$condition}";
+            $stmt = $this->connection->prepare($sql);
+
+            if ($stmt === false) {
+                throw new Exception("Error al preparar la consulta DELETE: " . $this->connection->error);
+            }
+
+            if (!empty($params)) {
+                $types = "";
+                foreach ($params as $param) {
+                    if (is_int($param)) {
+                        $types .= "i";
+                    } elseif (is_float($param)) {
+                        $types .= "d";
+                    } elseif (is_string($param)) {
+                        $types .= "s";
+                    } else {
+                        $types .= "b";
+                    }
+                }
+                $bindParams = array_merge([$types], $params);
+                $bindParamsRefs = [];
+                foreach ($bindParams as $key => $value) {
+                    $bindParamsRefs[$key] = &$bindParams[$key];
+                }
+                call_user_func_array([$stmt, 'bind_param'], $bindParamsRefs);
+            }
+
+            if (!$stmt->execute()) {
+                throw new Exception("Error al ejecutar la consulta DELETE: " . $stmt->error);
+            }
+
+            $affected = $stmt->affected_rows;
+            $stmt->close();
+
+            return $affected;
+        } catch (Exception $e) {
+            $this->error = $e->getMessage();
+            error_log("Error en delete(): " . $this->error);
             return false;
         }
     }

@@ -99,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Preparar las cabeceras del correo
     $cabeceras = "MIME-Version: 1.0" . "\r\n";
     $cabeceras .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-    $cabeceras .= "From: Sistema de Gestión de Recursos <no-reply@sistema-gestion.com>" . "\r\n";
+    $cabeceras .= 'From: Soporte Gestión de Recursos <informaticajar@demquintanormal.cl>' . "\r\n";
 
     // Enviar correo utilizando la función mail de PHP
     $enviado = mail($email, $asunto, $mensaje, $cabeceras);
