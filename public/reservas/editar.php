@@ -43,8 +43,11 @@ if (!$reserva) {
     exit;
 }
 
-// Verificar permisos (solo propietario o admin/académico pueden editar)
-$es_propietario = $reserva['id_usuario'] == $_SESSION['usuario_id'];
+// Definir la variable $estado para usarla en el formulario
+$estado = $reserva['estado'] ?? 'pendiente';
+
+// Verificar permisos: solo el propietario o admin/académico pueden editar
+$es_propietario = ($reserva['id_usuario'] == $_SESSION['usuario_id']);
 $es_admin = has_role([ROL_ADMIN, ROL_ACADEMICO]);
 
 if (!$es_propietario && !$es_admin) {
@@ -67,9 +70,9 @@ if (strtotime($reserva['fecha_inicio']) <= time()) {
     exit;
 }
 
-// Obtener lista de recursos disponibles (solo admin puede cambiar el recurso)
+// Obtener lista de recursos disponibles (para admin o propietario)
 $recursos = [];
-if ($es_admin) {
+if ($es_admin || $es_propietario) {
     $recursos = $db->getRows(
         "SELECT id_recurso, nombre, ubicacion FROM recursos 
          WHERE disponible = 1 AND estado = 'disponible' 
@@ -92,30 +95,35 @@ $fecha_inicio_parts = explode(' ', $reserva['fecha_inicio']);
 $fecha_inicio = $fecha_inicio_parts[0];
 $hora_inicio = substr($fecha_inicio_parts[1], 0, 5);
 
-$fecha_fin_parts = explode(' ', $reserva['fecha_fin']);
-$fecha_fin = $fecha_fin_parts[0];
-$hora_fin = substr($fecha_fin_parts[1], 0, 5);
+$fecha_fin = '';
+$hora_fin = '';
+if (!empty($reserva['fecha_fin'])) {
+    $fecha_fin_parts = explode(' ', $reserva['fecha_fin']);
+    $fecha_fin = $fecha_fin_parts[0];
+    $hora_fin = substr($fecha_fin_parts[1], 0, 5);
+}
 
 // Procesar el formulario si se envió
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Obtener y validar datos
-    $id_recurso = $es_admin ? intval($_POST['id_recurso'] ?? 0) : $reserva['id_recurso'];
+    $id_recurso = ($es_admin || $es_propietario) ? intval($_POST['id_recurso'] ?? 0) : $reserva['id_recurso'];
     $fecha_inicio_date = $_POST['fecha_inicio'] ?? '';
-    $fecha_inicio_time = $_POST['hora_inicio'] ?? '';
+    $hora_inicio = $_POST['hora_inicio'] ?? '';
     $fecha_fin_date = $_POST['fecha_fin'] ?? '';
-    $fecha_fin_time = $_POST['hora_fin'] ?? '';
+    $hora_fin = $_POST['hora_fin'] ?? '';
     $descripcion = trim($_POST['descripcion'] ?? '');
+    $estado = $_POST['estado'] ?? 'pendiente';
 
     // Combinar fecha y hora
-    $fecha_inicio_new = $fecha_inicio_date . ' ' . $fecha_inicio_time . ':00';
-    $fecha_fin_new = $fecha_fin_date . ' ' . $fecha_fin_time . ':00';
+    $fecha_inicio_new = $fecha_inicio_date . ' ' . $hora_inicio . ':00';
+    $fecha_fin_new = $fecha_fin_date . ' ' . $hora_fin . ':00';
 
     // Validar datos
     $errores = [];
 
-    if ($es_admin && $id_recurso <= 0) {
+    if (($es_admin || $es_propietario) && $id_recurso <= 0) {
         $errores[] = "Debes seleccionar un recurso";
-    } elseif ($es_admin) {
+    } elseif ($es_admin || $es_propietario) {
         // Verificar que el recurso exista y esté disponible
         $recurso_check = $db->getRow(
             "SELECT id_recurso FROM recursos WHERE id_recurso = ? AND disponible = 1 AND estado = 'disponible'",
@@ -127,13 +135,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    if (empty($fecha_inicio_date) || empty($fecha_inicio_time)) {
+    if (empty($fecha_inicio_date) || empty($hora_inicio)) {
         $errores[] = "La fecha y hora de inicio son obligatorias";
     } elseif (strtotime($fecha_inicio_new) < time()) {
         $errores[] = "La fecha de inicio debe ser futura";
     }
 
-    if (empty($fecha_fin_date) || empty($fecha_fin_time)) {
+    if (empty($fecha_fin_date) || empty($hora_fin)) {
         $errores[] = "La fecha y hora de fin son obligatorias";
     } elseif (strtotime($fecha_fin_new) <= strtotime($fecha_inicio_new)) {
         $errores[] = "La fecha de fin debe ser posterior a la fecha de inicio";
@@ -145,7 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $fecha_fin_new != $reserva['fecha_fin'] ||
         $id_recurso != $reserva['id_recurso']
     )) {
-        $sql = "SELECT COUNT(*) as conflictos FROM reservas 
+        $sql_conflicto = "SELECT COUNT(*) as conflictos FROM reservas 
                 WHERE id_recurso = ? AND id_reserva != ? AND estado IN ('pendiente', 'confirmada') 
                 AND (
                     (? BETWEEN fecha_inicio AND fecha_fin)
@@ -153,14 +161,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     OR (fecha_inicio BETWEEN ? AND ?)
                 )";
 
-        $resultado = $db->getRow($sql, [$id_recurso, $id_reserva, $fecha_inicio_new, $fecha_fin_new, $fecha_inicio_new, $fecha_fin_new]);
+        $resultado_conflicto = $db->getRow($sql_conflicto, [
+            $id_recurso,
+            $id_reserva,
+            $fecha_inicio_new,
+            $fecha_fin_new,
+            $fecha_inicio_new,
+            $fecha_fin_new
+        ]);
 
-        if ($resultado && $resultado['conflictos'] > 0) {
+        if ($resultado_conflicto && $resultado_conflicto['conflictos'] > 0) {
             $errores[] = "El recurso ya está reservado para el período seleccionado";
         }
     }
 
-    // Si hay errores, mostrarlos
+    // Si hay errores, mostrarlos y redireccionar
     if (!empty($errores)) {
         $_SESSION['error'] = implode('<br>', $errores);
         redirect('editar.php?id=' . $id_reserva);
@@ -171,19 +186,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = [
         'fecha_inicio' => $fecha_inicio_new,
         'fecha_fin' => $fecha_fin_new,
-        'descripcion' => $descripcion
+        'descripcion' => $descripcion,
+        'estado' => $estado
     ];
 
-    // Si es admin, también puede cambiar el recurso
-    if ($es_admin) {
+    // Permitir que el profesor o admin actualicen el recurso
+    if ($es_admin || $es_propietario) {
         $data['id_recurso'] = $id_recurso;
     }
 
-    // Actualizar en la base de datos
-    $resultado = $db->update('reservas', $data, 'id_reserva = ?', [$id_reserva]);
+    // Actualizar en la base de datos; se considera exitosa la operación si no hay error de SQL
+    $resultado_update = $db->update('reservas', $data, 'id_reserva = ?', [$id_reserva]);
 
-    if ($resultado) {
-        // Registrar la acción
+    if ($resultado_update !== false) {
+        // Registrar la acción en log
         $log_data = [
             'id_usuario' => $_SESSION['usuario_id'],
             'accion' => 'actualizar',
@@ -194,27 +210,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ];
         $db->insert('log_acciones', $log_data);
 
-        // Crear notificación si no es el propietario quien edita
+        // Crear notificación si quien edita no es el propietario
         if (!$es_propietario) {
-            $mensaje = "Tu reserva para '{$reserva['recurso_nombre']}' ha sido modificada por un administrador. " .
+            $mensaje_notif = "Tu reserva para '{$reserva['recurso_nombre']}' ha sido modificada por un administrador. " .
                 "Nueva fecha: " . date('d/m/Y H:i', strtotime($fecha_inicio_new)) . " - " .
                 date('d/m/Y H:i', strtotime($fecha_fin_new));
 
             $db->insert('notificaciones', [
                 'id_reserva' => $id_reserva,
                 'id_usuario' => $reserva['id_usuario'],
-                'mensaje' => $mensaje,
+                'mensaje' => $mensaje_notif,
                 'leido' => 0,
                 'fecha' => date('Y-m-d H:i:s')
             ]);
         }
 
-        // Redireccionar con mensaje de éxito
         $_SESSION['success'] = "Reserva actualizada correctamente";
         redirect('ver.php?id=' . $id_reserva);
         exit;
     } else {
-        // Mostrar error
         $_SESSION['error'] = "Error al actualizar la reserva: " . $db->getError();
         redirect('editar.php?id=' . $id_reserva);
         exit;
@@ -248,7 +262,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <a href="../reservas/calendario.php" class="nav-item">Calendario</a>
                 <?php if (has_role([ROL_ADMIN, ROL_ACADEMICO])): ?>
                     <a href="../mantenimiento/listar.php" class="nav-item">Mantenimiento</a>
-                    <a href="../reportes/index.php" class="nav-item">Reportes</a>
+                    <a href="../reportes/reportes_dashboard.php" class="nav-item">Reportes</a>
                 <?php endif; ?>
             </div>
         </div>
@@ -264,11 +278,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <?php echo $mensaje; ?>
 
+            <div style="margin-bottom: 20px;">
+                <a href="ver.php?id=<?php echo $id_reserva; ?>" class="btn btn-secondary">&laquo; Volver a Detalles</a>
+            </div>
+
             <div class="card">
                 <h2 class="form-title">Información de la Reserva</h2>
 
                 <form action="" method="POST" class="reservation-form">
-                    <?php if ($es_admin && !empty($recursos)): ?>
+                    <?php if (($es_admin || $es_propietario) && !empty($recursos)): ?>
                         <div class="form-group">
                             <label for="id_recurso">Recurso *</label>
                             <select id="id_recurso" name="id_recurso" required>
@@ -357,14 +375,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Función para validar y verificar disponibilidad
             function verificarDisponibilidad() {
                 // Obtener valores del formulario
-                const idRecurso = <?php echo $es_admin ? "document.getElementById('id_recurso').value" : $reserva['id_recurso']; ?>;
+                const recursoField = document.getElementById('id_recurso');
+                const recursoValor = recursoField ? recursoField.value : "<?php echo $reserva['id_recurso']; ?>";
                 const fechaInicio = document.getElementById('fecha_inicio').value;
                 const horaInicio = document.getElementById('hora_inicio').value;
                 const fechaFin = document.getElementById('fecha_fin').value;
                 const horaFin = document.getElementById('hora_fin').value;
 
                 // Validar datos
-                if (<?php echo $es_admin ? "!idRecurso" : "false"; ?>) {
+                if (recursoField && recursoField.value === '') {
                     alert('Debe seleccionar un recurso');
                     return false;
                 }
@@ -394,13 +413,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     return false;
                 }
 
-                // Mostrar información de verificación
+                // Mostrar mensaje de verificación
                 disponibilidadContenido.innerHTML = '<p>Verificando disponibilidad...</p>';
                 disponibilidadResultado.style.display = 'block';
 
                 // Construir parámetros para la consulta
                 const params = new URLSearchParams({
-                    id_recurso: idRecurso,
+                    id_recurso: recursoValor,
                     id_reserva: <?php echo $id_reserva; ?>,
                     fecha_inicio: `${fechaInicio} ${horaInicio}:00`,
                     fecha_fin: `${fechaFin} ${horaFin}:00`
@@ -424,11 +443,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <p>Reservas existentes en conflicto:</p>
                                 <ul>
                             `;
-
-                            data.reservas.forEach(reserva => {
-                                message += `<li>Desde ${reserva.fecha_inicio} hasta ${reserva.fecha_fin}</li>`;
+                            data.reservas.forEach(item => {
+                                message += `<li>Desde ${item.fecha_inicio} hasta ${item.fecha_fin}</li>`;
                             });
-
                             message += '</ul>';
                             disponibilidadContenido.innerHTML = message;
                         }
@@ -455,77 +472,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             form.addEventListener('submit', function(event) {
                 let hasError = false;
 
-                // Validar recurso
-                <?php if ($es_admin): ?>
+                <?php if ($es_admin || $es_propietario): ?>
                     const recursoField = document.getElementById('id_recurso');
-                    if (recursoField.value === '') {
-                        showError(recursoField, 'Debe seleccionar un recurso');
+                    if (recursoField && recursoField.value === '') {
+                        alert('Debe seleccionar un recurso');
                         hasError = true;
-                    } else {
-                        removeError(recursoField);
                     }
                 <?php endif; ?>
 
-                // Validar fecha y hora de inicio
                 const fechaInicioField = document.getElementById('fecha_inicio');
                 const horaInicioField = document.getElementById('hora_inicio');
-
                 if (fechaInicioField.value === '' || horaInicioField.value === '') {
-                    showError(fechaInicioField, 'Debe especificar la fecha y hora de inicio');
+                    alert('Debe especificar la fecha y hora de inicio');
                     hasError = true;
-                } else {
-                    removeError(fechaInicioField);
                 }
 
-                // Validar fecha y hora de fin
                 const fechaFinField = document.getElementById('fecha_fin');
                 const horaFinField = document.getElementById('hora_fin');
-
                 if (fechaFinField.value === '' || horaFinField.value === '') {
-                    showError(fechaFinField, 'Debe especificar la fecha y hora de fin');
+                    alert('Debe especificar la fecha y hora de fin');
                     hasError = true;
-                } else {
-                    removeError(fechaFinField);
                 }
 
-                // Validar que fecha fin sea posterior a fecha inicio
                 if (!hasError) {
                     const fechaInicioObj = new Date(`${fechaInicioField.value}T${horaInicioField.value}`);
                     const fechaFinObj = new Date(`${fechaFinField.value}T${horaFinField.value}`);
-
                     if (fechaFinObj <= fechaInicioObj) {
-                        showError(fechaFinField, 'La fecha de fin debe ser posterior a la fecha de inicio');
+                        alert('La fecha de fin debe ser posterior a la fecha de inicio');
                         hasError = true;
                     }
                 }
 
-                // Si hay errores, evitar el envío del formulario
                 if (hasError) {
                     event.preventDefault();
                     return false;
                 }
             });
-
-            // Funciones para mostrar y quitar errores
-            function showError(element, message) {
-                // Buscar o crear el contenedor de error
-                let errorDiv = element.parentNode.querySelector('.error-message');
-                if (!errorDiv) {
-                    errorDiv = document.createElement('div');
-                    errorDiv.className = 'error-message';
-                    element.parentNode.appendChild(errorDiv);
-                }
-                errorDiv.textContent = message;
-                element.classList.add('error');
-            }
-
-            function removeError(element) {
-                const errorDiv = element.parentNode.querySelector('.error-message');
-                if (errorDiv) {
-                    errorDiv.remove();
-                }
-                element.classList.remove('error');
-            }
         });
     </script>
 </body>

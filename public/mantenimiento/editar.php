@@ -52,6 +52,9 @@ if (!$mantenimiento) {
     exit;
 }
 
+// Definir la variable $estado para usarla en el formulario (esto soluciona el Warning)
+$estado = $mantenimiento['estado'] ?? 'pendiente';
+
 // Verificar si el mantenimiento ya está completado
 $es_completado = ($mantenimiento['estado'] === 'completado');
 
@@ -156,11 +159,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Preparar datos para actualizar
     $data = [
-        'id_recurso' => $id_recurso,
-        'descripcion' => $descripcion,
+        'id_recurso'   => $id_recurso,
+        'descripcion'  => $descripcion,
         'fecha_inicio' => $fecha_inicio_completa,
-        'fecha_fin' => $fecha_fin_completa,
-        'estado' => $estado
+        'fecha_fin'    => $fecha_fin_completa,
+        'estado'       => $estado
     ];
 
     // Actualizar en la base de datos
@@ -170,26 +173,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Actualizar el estado del recurso según el estado del mantenimiento
         if ($estado === 'completado') {
             $db->update('recursos', [
-                'estado' => 'disponible',
-                'disponible' => 1
+                'estado'      => 'disponible',
+                'disponible'  => 1
             ], 'id_recurso = ?', [$id_recurso]);
         } else {
             // Si está pendiente o en progreso, el recurso debe estar en mantenimiento
             $db->update('recursos', [
-                'estado' => 'mantenimiento',
-                'disponible' => 0
+                'estado'      => 'mantenimiento',
+                'disponible'  => 0
             ], 'id_recurso = ?', [$id_recurso]);
         }
 
         // Registrar la acción
         $log_data = [
             'id_usuario' => $_SESSION['usuario_id'],
-            'accion' => 'actualizar',
-            'entidad' => 'mantenimiento',
+            'accion'     => 'actualizar',
+            'entidad'    => 'mantenimiento',
             'id_entidad' => $id_mantenimiento,
-            'ip' => $_SERVER['REMOTE_ADDR'],
-            'fecha' => date('Y-m-d H:i:s'),
-            'detalles' => 'Mantenimiento actualizado'
+            'ip'         => $_SERVER['REMOTE_ADDR'],
+            'fecha'      => date('Y-m-d H:i:s'),
+            'detalles'   => 'Mantenimiento actualizado'
         ];
         $db->insert('log_acciones', $log_data);
 

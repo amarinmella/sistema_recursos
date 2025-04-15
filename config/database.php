@@ -64,17 +64,14 @@ class Database
             // Si no hay parámetros, ejecutar consulta directa
             if (empty($params)) {
                 $result = $this->connection->query($sql);
-
                 if ($result === false) {
                     throw new Exception("Error en la consulta: " . $this->connection->error);
                 }
-
                 return $result;
             }
 
             // Preparar la consulta con parámetros
             $stmt = $this->connection->prepare($sql);
-
             if ($stmt === false) {
                 throw new Exception("Error al preparar la consulta: " . $this->connection->error);
             }
@@ -107,11 +104,15 @@ class Database
                 throw new Exception("Error al ejecutar la consulta: " . $stmt->error);
             }
 
-            // Obtener el resultado
-            $result = $stmt->get_result();
-            $stmt->close();
-
-            return $result;
+            // Si hay resultados (por ejemplo, en un SELECT), obtenerlos; si no, retornar true.
+            if ($stmt->field_count > 0) {
+                $result = $stmt->get_result();
+                $stmt->close();
+                return $result;
+            } else {
+                $stmt->close();
+                return true;
+            }
         } catch (Exception $e) {
             $this->error = $e->getMessage();
             error_log($this->error);
@@ -125,14 +126,11 @@ class Database
     public function getRow($sql, $params = [])
     {
         $result = $this->query($sql, $params);
-
         if ($result === false) {
             return false;
         }
-
         $row = $result->fetch_assoc();
         $result->free();
-
         return $row;
     }
 
@@ -142,18 +140,14 @@ class Database
     public function getRows($sql, $params = [])
     {
         $result = $this->query($sql, $params);
-
         if ($result === false) {
             return false;
         }
-
         $rows = [];
         while ($row = $result->fetch_assoc()) {
             $rows[] = $row;
         }
-
         $result->free();
-
         return $rows;
     }
 
@@ -170,7 +164,6 @@ class Database
                     VALUES (" . implode(', ', $placeholders) . ")";
 
             $stmt = $this->connection->prepare($sql);
-
             if ($stmt === false) {
                 throw new Exception("Error al preparar la consulta: " . $this->connection->error);
             }
@@ -192,13 +185,9 @@ class Database
             // Preparar parámetros para bind_param
             $bindParams = array_merge([$types], array_values($data));
             $bindParamsRefs = [];
-
-            // Crear referencias para que bind_param funcione correctamente
             foreach ($bindParams as $key => $value) {
                 $bindParamsRefs[$key] = &$bindParams[$key];
             }
-
-            // Ejecutar bind_param
             call_user_func_array([$stmt, 'bind_param'], $bindParamsRefs);
 
             // Ejecutar la consulta
@@ -206,10 +195,8 @@ class Database
                 throw new Exception("Error al ejecutar la consulta: " . $stmt->error);
             }
 
-            // Obtener el ID insertado
             $insertId = $this->connection->insert_id;
             $stmt->close();
-
             return $insertId;
         } catch (Exception $e) {
             $this->error = $e->getMessage();
@@ -228,17 +215,13 @@ class Database
             foreach ($data as $key => $value) {
                 $fields[] = "{$key} = ?";
             }
-
             $sql = "UPDATE {$table} SET " . implode(', ', $fields) . " WHERE {$where}";
-
-            // Combinar los valores de los datos y los parámetros WHERE
             $combinedParams = array_merge(array_values($data), $params);
-
-            if (!$this->query($sql, $combinedParams)) {
+            $result = $this->query($sql, $combinedParams);
+            if ($result === false) {
                 return false;
             }
-
-            return $this->connection->affected_rows > 0;
+            return true;
         } catch (Exception $e) {
             $this->error = $e->getMessage();
             error_log($this->error);
@@ -259,11 +242,9 @@ class Database
         try {
             $sql = "DELETE FROM {$table} WHERE {$condition}";
             $stmt = $this->connection->prepare($sql);
-
             if ($stmt === false) {
                 throw new Exception("Error al preparar la consulta DELETE: " . $this->connection->error);
             }
-
             if (!empty($params)) {
                 $types = "";
                 foreach ($params as $param) {
@@ -284,14 +265,11 @@ class Database
                 }
                 call_user_func_array([$stmt, 'bind_param'], $bindParamsRefs);
             }
-
             if (!$stmt->execute()) {
                 throw new Exception("Error al ejecutar la consulta DELETE: " . $stmt->error);
             }
-
             $affected = $stmt->affected_rows;
             $stmt->close();
-
             return $affected;
         } catch (Exception $e) {
             $this->error = $e->getMessage();

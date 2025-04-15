@@ -41,23 +41,18 @@ if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha_fin)) {
     $fecha_fin = date('Y-m-d', strtotime('+7 days'));
 }
 
-// Preparar filtros para la consulta
+// Preparar filtros para la consulta de recursos
 $filtros = [];
 $params = [];
-
-// Añadir filtro de tipo de recurso
 if ($id_tipo > 0) {
     $filtros[] = "r.id_tipo = ?";
     $params[] = $id_tipo;
 }
 
-// Añadir filtro de recurso específico
 if ($id_recurso > 0) {
     $filtros[] = "r.id_recurso = ?";
     $params[] = $id_recurso;
 }
-
-// Construir cláusula WHERE para recursos
 $where_recursos = !empty($filtros) ? " WHERE " . implode(" AND ", $filtros) : "";
 
 // Consulta para obtener recursos según filtros
@@ -74,7 +69,6 @@ $sql_recursos = "
     $where_recursos
     ORDER BY t.nombre, r.nombre
 ";
-
 $recursos = $db->getRows($sql_recursos, $params);
 
 // Consulta para obtener las reservas en el período seleccionado
@@ -89,23 +83,18 @@ $sql_reservas = "
     FROM reservas res
     JOIN usuarios u ON res.id_usuario = u.id_usuario
     WHERE res.fecha_inicio <= ? 
-    AND res.fecha_fin >= ?
-    AND res.estado IN ('confirmada', 'pendiente')
+      AND res.fecha_fin >= ?
+      AND res.estado IN ('confirmada', 'pendiente')
 ";
-
 $params_reservas = [$fecha_fin . ' 23:59:59', $fecha_inicio . ' 00:00:00'];
-
-// Añadir filtros adicionales si es necesario
 if ($id_tipo > 0) {
     $sql_reservas .= " AND res.id_recurso IN (SELECT id_recurso FROM recursos WHERE id_tipo = ?)";
     $params_reservas[] = $id_tipo;
 }
-
 if ($id_recurso > 0) {
-    $sql_reservas .= " AND res.id_recurso = ?";
+    $sql_reservas .= " AND res.id_reserva = ?";
     $params_reservas[] = $id_recurso;
 }
-
 $reservas = $db->getRows($sql_reservas, $params_reservas);
 
 // Consulta para obtener los mantenimientos en el período seleccionado
@@ -118,37 +107,40 @@ $sql_mantenimientos = "
         m.estado
     FROM mantenimiento m
     WHERE m.fecha_inicio <= ? 
-    AND (m.fecha_fin >= ? OR m.fecha_fin IS NULL)
-    AND m.estado IN ('pendiente', 'en_progreso')
+      AND (m.fecha_fin >= ? OR m.fecha_fin IS NULL)
+      AND m.estado IN ('pendiente', 'en_progreso')
 ";
-
 $params_mantenimientos = [$fecha_fin . ' 23:59:59', $fecha_inicio . ' 00:00:00'];
-
-// Añadir filtros adicionales si es necesario
 if ($id_tipo > 0) {
     $sql_mantenimientos .= " AND m.id_recurso IN (SELECT id_recurso FROM recursos WHERE id_tipo = ?)";
     $params_mantenimientos[] = $id_tipo;
 }
-
 if ($id_recurso > 0) {
     $sql_mantenimientos .= " AND m.id_recurso = ?";
     $params_mantenimientos[] = $id_recurso;
 }
-
 $mantenimientos = $db->getRows($sql_mantenimientos, $params_mantenimientos);
 
 // Obtener lista de tipos de recursos para filtrar
-$tipos = $db->getRows(
-    "SELECT id_tipo, nombre FROM tipos_recursos ORDER BY nombre"
-);
+$tipos = $db->getRows("SELECT id_tipo, nombre FROM tipos_recursos ORDER BY nombre");
 
-// Obtener lista de recursos para filtrar
-$recursos_lista = $db->getRows(
-    "SELECT r.id_recurso, r.nombre, tr.nombre as tipo 
-     FROM recursos r
-     JOIN tipos_recursos tr ON r.id_tipo = tr.id_tipo
-     ORDER BY r.nombre"
-);
+// Obtener lista de recursos para filtrar (para el select)
+$recursos_lista = $db->getRows("
+    SELECT r.id_recurso, r.nombre, tr.nombre as tipo 
+    FROM recursos r
+    JOIN tipos_recursos tr ON r.id_tipo = tr.id_tipo
+    ORDER BY r.nombre
+");
+
+// Inicialización de la variable $mensaje para evitar warning
+$mensaje = '';
+if (isset($_SESSION['success'])) {
+    $mensaje = '<div class="alert alert-success">' . $_SESSION['success'] . '</div>';
+    unset($_SESSION['success']);
+} elseif (isset($_SESSION['error'])) {
+    $mensaje = '<div class="alert alert-error">' . $_SESSION['error'] . '</div>';
+    unset($_SESSION['error']);
+}
 
 // Calcular la disponibilidad actual
 $total_recursos = count($recursos);
@@ -157,26 +149,22 @@ $recursos_reservados = 0;
 $recursos_mantenimiento = 0;
 
 foreach ($recursos as $recurso) {
-    $id_recurso = $recurso['id_recurso'];
+    $id_r = $recurso['id_recurso'];
     $en_mantenimiento = false;
     $reservado = false;
 
-    // Verificar si está en mantenimiento ahora
-    foreach ($mantenimientos as $mantenimiento) {
-        if ($mantenimiento['id_recurso'] == $id_recurso) {
+    // Verificar si está en mantenimiento
+    foreach ($mantenimientos as $mant) {
+        if ($mant['id_recurso'] == $id_r) {
             $en_mantenimiento = true;
             break;
         }
     }
 
-    // Verificar si está reservado ahora
+    // Verificar si está reservado actualmente
     $ahora = date('Y-m-d H:i:s');
-    foreach ($reservas as $reserva) {
-        if (
-            $reserva['id_recurso'] == $id_recurso &&
-            $reserva['fecha_inicio'] <= $ahora &&
-            $reserva['fecha_fin'] >= $ahora
-        ) {
+    foreach ($reservas as $res) {
+        if ($res['id_recurso'] == $id_r && $res['fecha_inicio'] <= $ahora && $res['fecha_fin'] >= $ahora) {
             $reservado = true;
             break;
         }
@@ -191,7 +179,6 @@ foreach ($recursos as $recurso) {
     }
 }
 
-// Calcular porcentajes
 $porcentaje_disponible = $total_recursos > 0 ? ($recursos_disponibles / $total_recursos) * 100 : 0;
 $porcentaje_reservado = $total_recursos > 0 ? ($recursos_reservados / $total_recursos) * 100 : 0;
 $porcentaje_mantenimiento = $total_recursos > 0 ? ($recursos_mantenimiento / $total_recursos) * 100 : 0;
@@ -205,27 +192,24 @@ for ($hora = 0; $hora < 24; $hora++) {
     ];
 }
 
-foreach ($reservas as $reserva) {
-    $inicio_hora = (int)date('G', strtotime($reserva['fecha_inicio']));
-    $fin_hora = (int)date('G', strtotime($reserva['fecha_fin']));
-
-    // Si la reserva finaliza a las 00:00, considerarla como si terminara a las 23:59
-    if ($fin_hora === 0 && date('i', strtotime($reserva['fecha_fin'])) === '00') {
+foreach ($reservas as $res) {
+    if (!isset($res['fecha_inicio'])) {
+        continue;
+    }
+    $inicio_hora = (int)date('G', strtotime($res['fecha_inicio']));
+    $fin_hora = (int)date('G', strtotime($res['fecha_fin']));
+    if ($fin_hora === 0 && date('i', strtotime($res['fecha_fin'])) === '00') {
         $fin_hora = 23;
     }
-
-    // Contar cada hora ocupada por la reserva
-    for ($hora = $inicio_hora; $hora <= $fin_hora; $hora++) {
-        $hora_actual = $hora % 24; // Para manejar reservas que cruzan la medianoche
+    for ($h = $inicio_hora; $h <= $fin_hora; $h++) {
+        $hora_actual = $h % 24;
         $horas_ocupadas[$hora_actual]['total']++;
-        $horas_ocupadas[$hora_actual]['recursos'][] = $reserva['id_recurso'];
+        $horas_ocupadas[$hora_actual]['recursos'][] = $res['id_recurso'];
     }
 }
 
-// Encontrar las horas pico (más ocupadas)
 $horas_pico = [];
 $max_ocupacion = 0;
-
 foreach ($horas_ocupadas as $hora => $datos) {
     if ($datos['total'] > $max_ocupacion) {
         $max_ocupacion = $datos['total'];
@@ -235,7 +219,6 @@ foreach ($horas_ocupadas as $hora => $datos) {
     }
 }
 
-// Calcular ocupación por día de la semana
 $dias_ocupados = [
     0 => ['total' => 0, 'nombre' => 'Domingo'],
     1 => ['total' => 0, 'nombre' => 'Lunes'],
@@ -246,44 +229,28 @@ $dias_ocupados = [
     6 => ['total' => 0, 'nombre' => 'Sábado']
 ];
 
-foreach ($reservas as $reserva) {
-    $fecha_inicio = new DateTime($reserva['fecha_inicio']);
-    $fecha_fin = new DateTime($reserva['fecha_fin']);
-    $intervalo = new DateInterval('P1D'); // Intervalo de 1 día
-    $periodo = new DatePeriod($fecha_inicio, $intervalo, $fecha_fin);
-
-    // Contar cada día ocupado por la reserva
+foreach ($reservas as $res) {
+    $f_inicio = new DateTime($res['fecha_inicio']);
+    $f_fin = new DateTime($res['fecha_fin']);
+    $intervalo = new DateInterval('P1D');
+    $periodo = new DatePeriod($f_inicio, $intervalo, $f_fin);
     foreach ($periodo as $fecha) {
-        $dia_semana = (int)$fecha->format('w'); // 0 (domingo) a 6 (sábado)
+        $dia_semana = (int)$fecha->format('w');
         $dias_ocupados[$dia_semana]['total']++;
     }
-
-    // Contar también el último día (no incluido en el período)
-    $dia_fin = (int)$fecha_fin->format('w');
+    $dia_fin = (int)$f_fin->format('w');
     $dias_ocupados[$dia_fin]['total']++;
 }
 
-// Verificar si hay mensaje de éxito o error
-$mensaje = '';
-if (isset($_SESSION['success'])) {
-    $mensaje = '<div class="alert alert-success">' . $_SESSION['success'] . '</div>';
-    unset($_SESSION['success']);
-} elseif (isset($_SESSION['error'])) {
-    $mensaje = '<div class="alert alert-error">' . $_SESSION['error'] . '</div>';
-    unset($_SESSION['error']);
-}
-
-// Preparar datos para el gráfico de ocupación por hora
+// Datos para el gráfico de ocupación por hora (solo de 7am a 10pm)
 $labels_horas = [];
 $datos_ocupacion = [];
-
-for ($hora = 7; $hora <= 22; $hora++) { // Mostrar solo de 7am a 10pm
-    $label_hora = $hora . ':00';
-    $labels_horas[] = $label_hora;
+for ($hora = 7; $hora <= 22; $hora++) {
+    $labels_horas[] = $hora . ':00';
     $datos_ocupacion[] = $horas_ocupadas[$hora]['total'];
 }
 
-// Función para formatear fecha a un formato legible
+// Función para formatear fecha
 function formatear_fecha($fecha)
 {
     return date('d/m/Y', strtotime($fecha));
@@ -349,12 +316,10 @@ function formatear_fecha($fecha)
                             <label class="filter-label" for="fecha_inicio">Fecha Inicio:</label>
                             <input type="date" id="fecha_inicio" name="fecha_inicio" class="filter-input" value="<?php echo $fecha_inicio; ?>">
                         </div>
-
                         <div class="filter-group">
                             <label class="filter-label" for="fecha_fin">Fecha Fin:</label>
                             <input type="date" id="fecha_fin" name="fecha_fin" class="filter-input" value="<?php echo $fecha_fin; ?>">
                         </div>
-
                         <div class="filter-group">
                             <label class="filter-label" for="tipo">Tipo de Recurso:</label>
                             <select id="tipo" name="tipo" class="filter-select">
@@ -373,14 +338,13 @@ function formatear_fecha($fecha)
                             <label class="filter-label" for="recurso">Recurso:</label>
                             <select id="recurso" name="recurso" class="filter-select">
                                 <option value="0">Todos los recursos</option>
-                                <?php foreach ($recursos_lista as $recurso): ?>
-                                    <option value="<?php echo $recurso['id_recurso']; ?>" <?php echo ($id_recurso == $recurso['id_recurso']) ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($recurso['nombre'] . ' (' . $recurso['tipo'] . ')'); ?>
+                                <?php foreach ($recursos_lista as $rec): ?>
+                                    <option value="<?php echo $rec['id_recurso']; ?>" <?php echo ($id_recurso == $rec['id_recurso']) ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($rec['nombre'] . ' (' . $rec['tipo'] . ')'); ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
-
                         <div class="filter-group">
                             <label class="filter-label" for="vista">Vista:</label>
                             <select id="vista" name="vista" class="filter-select">
@@ -455,17 +419,14 @@ function formatear_fecha($fecha)
                         <div class="busy-title">Días más ocupados:</div>
                         <div class="busy-values">
                             <?php
-                            // Encontrar el día más ocupado
-                            $max_dia = 0;
+                            $max_ocupacion_dia = 0;
                             $dia_mas_ocupado = '';
-
                             foreach ($dias_ocupados as $dia => $datos) {
-                                if ($datos['total'] > $max_dia) {
-                                    $max_dia = $datos['total'];
+                                if ($datos['total'] > $max_ocupacion_dia) {
+                                    $max_ocupacion_dia = $datos['total'];
                                     $dia_mas_ocupado = $datos['nombre'];
                                 }
                             }
-
                             if (!empty($dia_mas_ocupado)) {
                                 echo '<span class="busy-badge">' . $dia_mas_ocupado . '</span>';
                             } else {
@@ -477,110 +438,35 @@ function formatear_fecha($fecha)
                 </div>
             </div>
 
-            <div class="card">
-                <h2 class="card-title">Recursos Disponibles Ahora</h2>
-
-                <?php if (empty($recursos)): ?>
-                    <div class="empty-state">
-                        <p>No hay recursos disponibles para mostrar.</p>
-                    </div>
-                <?php else: ?>
-                    <div class="recursos-grid">
-                        <?php
-                        $ahora = date('Y-m-d H:i:s');
-                        foreach ($recursos as $recurso):
-                            $id_recurso = $recurso['id_recurso'];
-                            $en_mantenimiento = false;
-                            $reservado = false;
-                            $reservado_por = '';
-
-                            // Verificar si está en mantenimiento ahora
-                            foreach ($mantenimientos as $mantenimiento) {
-                                if ($mantenimiento['id_recurso'] == $id_recurso) {
-                                    $en_mantenimiento = true;
-                                    break;
-                                }
-                            }
-
-                            // Verificar si está reservado ahora
-                            foreach ($reservas as $reserva) {
-                                if (
-                                    $reserva['id_recurso'] == $id_recurso &&
-                                    $reserva['fecha_inicio'] <= $ahora &&
-                                    $reserva['fecha_fin'] >= $ahora
-                                ) {
-                                    $reservado = true;
-                                    $reservado_por = $reserva['nombre_usuario'];
-                                    break;
-                                }
-                            }
-
-                            // Determinar estado y clase CSS
-                            if ($en_mantenimiento) {
-                                $estado = 'En Mantenimiento';
-                                $clase = 'mantenimiento';
-                            } elseif ($reservado) {
-                                $estado = 'Reservado';
-                                $clase = 'reservado';
-                            } elseif ($recurso['disponible'] == 1 && $recurso['estado'] == 'disponible') {
-                                $estado = 'Disponible';
-                                $clase = 'disponible';
-                            } else {
-                                $estado = 'No Disponible';
-                                $clase = 'no-disponible';
-                            }
-                        ?>
-                            <div class="recurso-card <?php echo $clase; ?>">
-                                <div class="recurso-nombre"><?php echo htmlspecialchars($recurso['nombre_recurso']); ?></div>
-                                <div class="recurso-tipo"><?php echo htmlspecialchars($recurso['tipo_recurso']); ?></div>
-                                <div class="recurso-ubicacion"><?php echo htmlspecialchars($recurso['ubicacion'] ?: 'Sin ubicación'); ?></div>
-                                <div class="recurso-estado"><?php echo $estado; ?></div>
-                                <?php if ($reservado && !empty($reservado_por)): ?>
-                                    <div class="recurso-reservado-por">Reservado por: <?php echo htmlspecialchars($reservado_por); ?></div>
-                                <?php endif; ?>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
-            </div>
-
             <?php if ($vista == 'diaria'): ?>
                 <div class="card">
                     <h2 class="card-title">Disponibilidad por Hora (Hoy)</h2>
-
                     <?php
                     $fecha_hoy = date('Y-m-d');
                     $horas_dia = [];
-
-                    // Inicializar array para cada hora del día
-                    for ($hora = 7; $hora <= 22; $hora++) { // De 7am a 10pm
+                    for ($hora = 7; $hora <= 22; $hora++) {
                         $horas_dia[$hora] = [
                             'disponibles' => $total_recursos,
                             'ocupados' => 0,
-                            'recursos_ocupados' => []
+                            'recursos' => []
                         ];
                     }
-
-                    // Calcular ocupación para hoy
-                    foreach ($reservas as $reserva) {
-                        $fecha_inicio_reserva = date('Y-m-d', strtotime($reserva['fecha_inicio']));
-                        $fecha_fin_reserva = date('Y-m-d', strtotime($reserva['fecha_fin']));
-
+                    foreach ($reservas as $res) {
+                        $fecha_inicio_reserva = date('Y-m-d', strtotime($res['fecha_inicio']));
+                        $fecha_fin_reserva = date('Y-m-d', strtotime($res['fecha_fin']));
                         if ($fecha_inicio_reserva <= $fecha_hoy && $fecha_fin_reserva >= $fecha_hoy) {
-                            $hora_inicio = max(7, (int)date('G', strtotime($reserva['fecha_inicio'])));
-                            $hora_fin = min(22, (int)date('G', strtotime($reserva['fecha_fin'])));
-
-                            for ($hora = $hora_inicio; $hora <= $hora_fin; $hora++) {
+                            $hora_inicio_res = max(7, (int)date('G', strtotime($res['fecha_inicio'])));
+                            $hora_fin_res = min(22, (int)date('G', strtotime($res['fecha_fin'])));
+                            for ($hora = $hora_inicio_res; $hora <= $hora_fin_res; $hora++) {
                                 if (isset($horas_dia[$hora])) {
                                     $horas_dia[$hora]['ocupados']++;
-                                    $horas_dia[$hora]['recursos_ocupados'][] = $reserva['id_recurso'];
-                                    $horas_dia[$hora]['disponibles'] = $total_recursos - count(array_unique($horas_dia[$hora]['recursos_ocupados']));
+                                    $horas_dia[$hora]['recursos'][] = $res['id_recurso'];
+                                    $horas_dia[$hora]['disponibles'] = $total_recursos - count(array_unique($horas_dia[$hora]['recursos']));
                                 }
                             }
                         }
                     }
                     ?>
-
                     <div class="disponibilidad-horaria">
                         <div class="horas-header">
                             <?php for ($hora = 7; $hora <= 22; $hora++): ?>
@@ -609,9 +495,7 @@ function formatear_fecha($fecha)
 
             <div class="card">
                 <h2 class="card-title">Próximas Reservas</h2>
-
                 <?php
-                // Obtener próximas reservas
                 $sql_proximas = "
                     SELECT 
                         res.fecha_inicio,
@@ -622,17 +506,15 @@ function formatear_fecha($fecha)
                     JOIN recursos r ON res.id_recurso = r.id_recurso
                     JOIN usuarios u ON res.id_usuario = u.id_usuario
                     WHERE res.fecha_inicio > ? 
-                    AND res.fecha_inicio <= ?
-                    AND res.estado IN ('confirmada', 'pendiente')
-                    " . ($id_tipo > 0 ? " AND r.id_tipo = " . intval($id_tipo) : "") . "
-                    " . ($id_recurso > 0 ? " AND res.id_recurso = " . intval($id_recurso) : "") . "
+                      AND res.fecha_inicio <= ?
+                      AND res.estado IN ('confirmada', 'pendiente')
+                      " . ($id_tipo > 0 ? " AND r.id_tipo = " . intval($id_tipo) : "") . "
+                      " . ($id_recurso > 0 ? " AND res.id_recurso = " . intval($id_recurso) : "") . "
                     ORDER BY res.fecha_inicio
                     LIMIT 10
                 ";
-
                 $proximas_reservas = $db->getRows($sql_proximas, [date('Y-m-d H:i:s'), date('Y-m-d H:i:s', strtotime('+7 days'))]);
                 ?>
-
                 <?php if (empty($proximas_reservas)): ?>
                     <div class="empty-state">
                         <p>No hay próximas reservas para mostrar.</p>
@@ -649,12 +531,12 @@ function formatear_fecha($fecha)
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($proximas_reservas as $reserva): ?>
+                                <?php foreach ($proximas_reservas as $prox): ?>
                                     <tr>
-                                        <td><?php echo htmlspecialchars($reserva['nombre_recurso']); ?></td>
-                                        <td><?php echo date('d/m/Y H:i', strtotime($reserva['fecha_inicio'])); ?></td>
-                                        <td><?php echo date('d/m/Y H:i', strtotime($reserva['fecha_fin'])); ?></td>
-                                        <td><?php echo htmlspecialchars($reserva['nombre_usuario']); ?></td>
+                                        <td><?php echo htmlspecialchars($prox['nombre_recurso']); ?></td>
+                                        <td><?php echo date('d/m/Y H:i', strtotime($prox['fecha_inicio'])); ?></td>
+                                        <td><?php echo date('d/m/Y H:i', strtotime($prox['fecha_fin'])); ?></td>
+                                        <td><?php echo htmlspecialchars($prox['nombre_usuario']); ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -665,92 +547,51 @@ function formatear_fecha($fecha)
 
             <div class="card">
                 <h2 class="card-title">Análisis y Recomendaciones</h2>
-
                 <div style="margin-top: 20px;">
                     <h3 style="font-size: 16px; margin-bottom: 10px;">Análisis de Disponibilidad:</h3>
-
                     <ul style="padding-left: 20px; margin-bottom: 15px;">
-                        <?php
-                        // Calcular porcentaje de disponibilidad actual
-                        $porcentaje_disponible = $total_recursos > 0 ? ($recursos_disponibles / $total_recursos) * 100 : 0;
-
-                        // Encontrar la hora más ocupada
-                        $hora_mas_ocupada = 0;
-                        $ocupacion_maxima = 0;
-                        foreach ($horas_ocupadas as $hora => $datos) {
-                            if ($datos['total'] > $ocupacion_maxima) {
-                                $ocupacion_maxima = $datos['total'];
-                                $hora_mas_ocupada = $hora;
-                            }
-                        }
-
-                        // Calcular el día más ocupado
-                        $dia_mas_ocupado = "";
-                        $max_ocupacion_dia = 0;
-                        foreach ($dias_ocupados as $dia => $datos) {
-                            if ($datos['total'] > $max_ocupacion_dia) {
-                                $max_ocupacion_dia = $datos['total'];
-                                $dia_mas_ocupado = $datos['nombre'];
-                            }
-                        }
-                        ?>
-
                         <li>
                             <strong>Disponibilidad actual:</strong>
                             <?php echo number_format($porcentaje_disponible, 1); ?>% de los recursos están disponibles ahora mismo
                             (<?php echo $recursos_disponibles; ?> de <?php echo $total_recursos; ?>).
                             <?php if ($porcentaje_disponible < 30): ?>
-                                Esta disponibilidad es baja, lo que indica una alta demanda de recursos en este momento.
+                                Esta disponibilidad es baja, lo que indica alta demanda.
                             <?php elseif ($porcentaje_disponible > 70): ?>
-                                Esta disponibilidad es alta, lo que sugiere que hay muchos recursos sin utilizar actualmente.
+                                Esta disponibilidad es alta, lo que sugiere que hay muchos recursos sin utilizar.
                             <?php endif; ?>
                         </li>
-
-                        <?php if (!empty($hora_mas_ocupada)): ?>
+                        <?php if (!empty($horas_pico)): ?>
                             <li>
                                 <strong>Horario más ocupado:</strong>
-                                La franja horaria de <?php echo $hora_mas_ocupada; ?>:00 a <?php echo ($hora_mas_ocupada + 1); ?>:00
-                                es la que registra mayor número de reservas (<?php echo $ocupacion_maxima; ?>).
+                                La franja de <?php echo $horas_pico[0]; ?>:00 a <?php echo ($horas_pico[0] + 1); ?>:00 registra mayor ocupación (<?php echo $max_ocupacion; ?> reservas).
                             </li>
                         <?php endif; ?>
-
                         <?php if (!empty($dia_mas_ocupado)): ?>
                             <li>
                                 <strong>Día con mayor ocupación:</strong>
-                                <?php echo $dia_mas_ocupado; ?> es el día de la semana con mayor número de reservas
-                                (<?php echo $max_ocupacion_dia; ?> reservas).
+                                <?php echo $dia_mas_ocupado; ?> es el día con mayor número de reservas (<?php echo $max_ocupacion_dia; ?> reservas).
                             </li>
                         <?php endif; ?>
-
                         <li>
                             <strong>Recursos en mantenimiento:</strong>
-                            Actualmente hay <?php echo $recursos_mantenimiento; ?> recursos en mantenimiento
+                            <?php echo $recursos_mantenimiento; ?> recursos están en mantenimiento
                             (<?php echo number_format(($recursos_mantenimiento / $total_recursos) * 100, 1); ?>% del total).
                         </li>
                     </ul>
 
                     <div style="margin-top: 20px; padding: 15px; background-color: rgba(74, 144, 226, 0.1); border-radius: 4px;">
                         <h4 style="margin-bottom: 10px; color: #4A90E2;">Recomendaciones:</h4>
-
                         <ul style="padding-left: 20px; margin-bottom: 0;">
                             <?php if ($porcentaje_disponible < 30): ?>
-                                <li>Considere aumentar la cantidad de recursos disponibles dado el alto nivel de ocupación actual.</li>
+                                <li>Aumente la disponibilidad de recursos.</li>
                             <?php endif; ?>
-
-                            <?php if (!empty($hora_mas_ocupada)): ?>
-                                <li>Programar mantenimientos fuera de la franja horaria de <?php echo $hora_mas_ocupada; ?>:00 a <?php echo ($hora_mas_ocupada + 1); ?>:00 para minimizar el impacto en los usuarios.</li>
+                            <?php if (!empty($horas_pico)): ?>
+                                <li>Evite realizar mantenimientos durante la franja de <?php echo $horas_pico[0]; ?>:00 a <?php echo ($horas_pico[0] + 1); ?>:00.</li>
                             <?php endif; ?>
-
                             <?php if (!empty($dia_mas_ocupado)): ?>
-                                <li>Aumentar la disponibilidad de recursos los días <?php echo $dia_mas_ocupado; ?> debido a la alta demanda registrada.</li>
+                                <li>Considere ampliar la oferta de recursos los días <?php echo $dia_mas_ocupado; ?>.</li>
                             <?php endif; ?>
-
-                            <?php if ($recursos_mantenimiento > $total_recursos * 0.2): // Si más del 20% está en mantenimiento 
-                            ?>
-                                <li>Revisar la planificación de mantenimientos. Actualmente hay un porcentaje elevado de recursos no disponibles por este motivo.</li>
-                            <?php endif; ?>
-
-                            <li>Monitorear regularmente los patrones de uso para optimizar la disponibilidad de recursos en los momentos de mayor demanda.</li>
+                            <li>Monitoree constantemente el uso para optimizar la disponibilidad.</li>
                         </ul>
                     </div>
                 </div>
@@ -758,6 +599,7 @@ function formatear_fecha($fecha)
         </div>
     </div>
 
+    <!-- Gráficos con Chart.js -->
     <script src="../assets/js/chart.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -774,9 +616,9 @@ function formatear_fecha($fecha)
                             <?php echo $recursos_mantenimiento; ?>
                         ],
                         backgroundColor: [
-                            'rgba(40, 167, 69, 0.7)', // Verde para disponibles
-                            'rgba(0, 123, 255, 0.7)', // Azul para reservados
-                            'rgba(255, 193, 7, 0.7)' // Amarillo para mantenimiento
+                            'rgba(40, 167, 69, 0.7)',
+                            'rgba(0, 123, 255, 0.7)',
+                            'rgba(255, 193, 7, 0.7)'
                         ],
                         borderColor: [
                             'rgba(40, 167, 69, 1)',
@@ -796,7 +638,7 @@ function formatear_fecha($fecha)
                         callbacks: {
                             label: function(tooltipItem, data) {
                                 const dataset = data.datasets[tooltipItem.datasetIndex];
-                                const total = dataset.data.reduce((previousValue, currentValue) => previousValue + currentValue);
+                                const total = dataset.data.reduce((prev, curr) => prev + curr, 0);
                                 const currentValue = dataset.data[tooltipItem.index];
                                 const percentage = Math.round((currentValue / total) * 100);
                                 return `${data.labels[tooltipItem.index]}: ${currentValue} (${percentage}%)`;
@@ -841,6 +683,7 @@ function formatear_fecha($fecha)
             });
         });
     </script>
+    <script src="../assets/js/main.js"></script>
 </body>
 
 </html>
