@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Módulo de Reportes - Exportación de Datos
  */
@@ -116,7 +117,7 @@ function exportarReporte($tipo_reporte, $parametros)
                     ]);
                     header("Location: generar_pdf_uso_recursos.php?$queryParams");
                     exit;
-                
+
                 case 'estadisticas_reservas':
                     // Redirige al script específico para el informe PDF de estadísticas de reservas
                     $queryParams = http_build_query([
@@ -129,7 +130,7 @@ function exportarReporte($tipo_reporte, $parametros)
                     ]);
                     header("Location: generar_pdf_estadisticas_reservas.php?$queryParams");
                     exit;
-                
+
                 case 'usuarios':
                     // Redirige al script específico para el informe PDF de usuarios
                     $queryParams = http_build_query([
@@ -139,7 +140,7 @@ function exportarReporte($tipo_reporte, $parametros)
                     ]);
                     header("Location: generar_pdf_usuarios.php?$queryParams");
                     exit;
-                
+
                 case 'reservas':
                     // Redirige al script específico para el informe PDF de reservas
                     $queryParams = http_build_query([
@@ -151,7 +152,7 @@ function exportarReporte($tipo_reporte, $parametros)
                     ]);
                     header("Location: generar_pdf_reservas.php?$queryParams");
                     exit;
-                
+
                 case 'recursos':
                     // Redirige al script específico para el informe PDF de recursos
                     $queryParams = http_build_query([
@@ -161,7 +162,7 @@ function exportarReporte($tipo_reporte, $parametros)
                     ]);
                     header("Location: generar_pdf_recursos.php?$queryParams");
                     exit;
-                
+
                 case 'mantenimientos':
                     // Redirige al script específico para el informe PDF de mantenimientos
                     $queryParams = http_build_query([
@@ -173,26 +174,26 @@ function exportarReporte($tipo_reporte, $parametros)
                     ]);
                     header("Location: generar_pdf_mantenimientos.php?$queryParams");
                     exit;
-                
+
                 default:
                     $_SESSION['error'] = "Tipo de reporte no soportado para exportación a PDF";
                     redirect('exportar.php');
                     exit;
             }
             break;
-        
+
         case 'csv':
             // Redirigir al script específico de exportación CSV
             $queryParams = http_build_query(array_merge(['reporte' => $tipo_reporte], $parametros));
             header("Location: exportar_csv.php?$queryParams");
             exit;
-        
+
         case 'excel':
             // Redirigir al script específico de exportación Excel
             $queryParams = http_build_query(array_merge(['reporte' => $tipo_reporte], $parametros));
             header("Location: exportar_excel.php?$queryParams");
             exit;
-        
+
         default:
             $_SESSION['error'] = "Formato de exportación no soportado";
             redirect('exportar.php');
@@ -276,6 +277,12 @@ $roles = $db->getRows("SELECT id_rol, nombre FROM roles ORDER BY nombre");
 
             <?php echo $mensaje; ?>
 
+            <div class="breadcrumb">
+                <a href="../admin/dashboard.php">Dashboard</a> &gt;
+                <a href="reportes_dashboard.php">Reportes</a> &gt;
+                <span>Exportación de Datos</span>
+            </div>
+
             <div class="card">
                 <h2 class="card-title">Configuración de Exportación</h2>
                 <p>Seleccione el tipo de reporte, formato y parámetros para la exportación.</p>
@@ -327,7 +334,7 @@ $roles = $db->getRows("SELECT id_rol, nombre FROM roles ORDER BY nombre");
                     <div class="export-option">
                         <div class="export-title">Recursos Disponibles (PDF)</div>
                         <div class="export-description">Lista de todos los recursos actualmente disponibles para reserva.</div>
-                        <a href="generar_pdf_recursos.php?estado=disponible&disponible=1" class="btn btn-primary">Exportar</a>
+                        <a href="reportes/generar_pdf_recursos_disponibles.php" class="btn btn-primary">Exportar Recursos Disponibles (PDF)</a>
                     </div>
 
                     <div class="export-option">
@@ -469,9 +476,9 @@ $roles = $db->getRows("SELECT id_rol, nombre FROM roles ORDER BY nombre");
                                     <label for="recurso">Recurso</label>
                                     <select id="recurso" name="recurso" class="form-control">
                                         <option value="0">Todos los recursos</option>
-                                        <?php 
+                                        <?php
                                         $recursos = $db->getRows("SELECT id_recurso, nombre FROM recursos ORDER BY nombre");
-                                        foreach ($recursos as $recurso): 
+                                        foreach ($recursos as $recurso):
                                         ?>
                                             <option value="<?php echo $recurso['id_recurso']; ?>"><?php echo htmlspecialchars($recurso['nombre']); ?></option>
                                         <?php endforeach; ?>
@@ -537,9 +544,9 @@ $roles = $db->getRows("SELECT id_rol, nombre FROM roles ORDER BY nombre");
                                     <label for="recurso">Recurso</label>
                                     <select id="recurso" name="recurso" class="form-control">
                                         <option value="0">Todos los recursos</option>
-                                        <?php 
+                                        <?php
                                         $recursos = $db->getRows("SELECT id_recurso, nombre FROM recursos ORDER BY nombre");
-                                        foreach ($recursos as $recurso): 
+                                        foreach ($recursos as $recurso):
                                         ?>
                                             <option value="<?php echo $recurso['id_recurso']; ?>"><?php echo htmlspecialchars($recurso['nombre']); ?></option>
                                         <?php endforeach; ?>
@@ -596,4 +603,5 @@ $roles = $db->getRows("SELECT id_rol, nombre FROM roles ORDER BY nombre");
         });
     </script>
 </body>
+
 </html>

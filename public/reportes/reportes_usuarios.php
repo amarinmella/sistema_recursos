@@ -7,6 +7,9 @@
 // Iniciar sesión
 session_start();
 
+// Desactivar warnings de tipo warning en foreach
+error_reporting(E_ALL & ~E_WARNING);
+
 // Incluir archivos necesarios
 require_once '../../config/config.php';
 require_once '../../config/database.php';
@@ -303,6 +306,12 @@ $dias_preferidos = $db->getRows($sql_dias, [
     $fecha_inicio . ' 00:00:00',
     $fecha_fin . ' 23:59:59'
 ]);
+
+// Evitar foreach() sobre boolean retornado por getRows()
+$dias_preferidos     = is_array($dias_preferidos)     ? $dias_preferidos     : [];
+$horarios_preferidos = is_array($horarios_preferidos) ? $horarios_preferidos : [];
+$estadisticas        = is_array($estadisticas)        ? $estadisticas        : [];
+
 
 // Consulta resumen general
 $sql_resumen = "

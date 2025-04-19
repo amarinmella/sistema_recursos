@@ -36,39 +36,34 @@ $modo_visualizacion = isset($_GET['visualizacion']) ? $_GET['visualizacion'] : '
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha_inicio)) {
     $fecha_inicio = date('Y-m-d', strtotime('-90 days'));
 }
-
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha_fin)) {
     $fecha_fin = date('Y-m-d');
 }
 
-// Verificar si la diferencia entre fechas es coherente con el modo de visualización
+// Verificar diferencia de fechas para visualización diaria
 $diff = strtotime($fecha_fin) - strtotime($fecha_inicio);
 $dias_diff = floor($diff / (60 * 60 * 24));
-
 if ($dias_diff > 365 && $modo_visualizacion == 'diario') {
-    // Si el rango es mayor a un año y se pide visualización diaria, limitar a último mes
     $fecha_inicio = date('Y-m-d', strtotime('-30 days'));
     $_SESSION['info'] = "El rango de fechas era demasiado amplio para visualización diaria. Se ha ajustado a los últimos 30 días.";
 }
 
-// Preparar filtros para las consultas
+// Preparar filtros para consultas
 $filtros = [];
 $params = [];
 
-// Añadir filtro de fechas
+// Filtros de fechas
 $filtros[] = "r.fecha_inicio >= ?";
 $params[] = $fecha_inicio . ' 00:00:00';
-
 $filtros[] = "r.fecha_inicio <= ?";
 $params[] = $fecha_fin . ' 23:59:59';
 
-// Añadir filtro de tipo de recurso
+// Filtro de tipo de recurso
 if ($id_tipo > 0) {
     $filtros[] = "tr.id_tipo = ?";
     $params[] = $id_tipo;
 }
-
-// Añadir filtro de usuario
+// Filtro de usuario
 if ($id_usuario > 0) {
     $filtros[] = "r.id_usuario = ?";
     $params[] = $id_usuario;
@@ -78,10 +73,6 @@ if ($id_usuario > 0) {
 $where = !empty($filtros) ? " WHERE " . implode(" AND ", $filtros) : "";
 
 // Consulta según el modo de visualización
-$sql_tendencia = "";
-$group_by = "";
-$order_by = "";
-
 switch ($modo_visualizacion) {
     case 'diario':
         $sql_tendencia = "
@@ -98,7 +89,6 @@ switch ($modo_visualizacion) {
             ORDER BY periodo ASC
         ";
         break;
-
     case 'semanal':
         $sql_tendencia = "
             SELECT 
@@ -115,7 +105,6 @@ switch ($modo_visualizacion) {
             ORDER BY YEAR(r.fecha_inicio) ASC, WEEK(r.fecha_inicio) ASC
         ";
         break;
-
     case 'mensual':
     default:
         $sql_tendencia = "
@@ -135,10 +124,9 @@ switch ($modo_visualizacion) {
         break;
 }
 
-// Ejecutar consulta de tendencias
-$tendencias = $db->getRows($sql_tendencia, $params);
+// Ejecutar consultas
+$tendencias   = $db->getRows($sql_tendencia, $params);
 
-// Estadísticas por día de la semana
 $sql_dias_semana = "
     SELECT 
         DAYOFWEEK(r.fecha_inicio) as dia_numero,
@@ -161,7 +149,6 @@ $sql_dias_semana = "
 ";
 $dias_semana = $db->getRows($sql_dias_semana, $params);
 
-// Estadísticas por hora
 $sql_horas = "
     SELECT 
         HOUR(r.fecha_inicio) as hora,
@@ -175,7 +162,6 @@ $sql_horas = "
 ";
 $horas = $db->getRows($sql_horas, $params);
 
-// Estadísticas por duración
 $sql_duracion = "
     SELECT 
         CASE 
@@ -202,7 +188,6 @@ $sql_duracion = "
 ";
 $duraciones = $db->getRows($sql_duracion, $params);
 
-// Estadísticas por estado
 $sql_estados = "
     SELECT 
         r.estado,
@@ -215,7 +200,6 @@ $sql_estados = "
 ";
 $estados = $db->getRows($sql_estados, $params);
 
-// Estadísticas por tipo de recurso
 $sql_tipos = "
     SELECT 
         tr.nombre as tipo_recurso,
@@ -229,7 +213,6 @@ $sql_tipos = "
 ";
 $tipos_recurso = $db->getRows($sql_tipos, $params);
 
-// Obtener total de reservas para el período
 $sql_total = "
     SELECT COUNT(*) as total FROM reservas r
     JOIN recursos rc ON r.id_recurso = rc.id_recurso
@@ -238,12 +221,7 @@ $sql_total = "
 ";
 $total_reservas = $db->getRow($sql_total, $params)['total'] ?? 0;
 
-// Obtener lista de tipos de recursos para filtrar
-$tipos = $db->getRows(
-    "SELECT id_tipo, nombre FROM tipos_recursos ORDER BY nombre"
-);
-
-// Obtener lista de usuarios activos para filtrar
+$tipos = $db->getRows("SELECT id_tipo, nombre FROM tipos_recursos ORDER BY nombre");
 $usuarios = $db->getRows(
     "SELECT u.id_usuario, CONCAT(u.nombre, ' ', u.apellido) as nombre_completo, r.nombre as rol
      FROM usuarios u
@@ -252,7 +230,7 @@ $usuarios = $db->getRows(
      ORDER BY u.nombre, u.apellido"
 );
 
-// Verificar si hay mensaje de éxito o error
+// Manejo de mensajes
 $mensaje = '';
 if (isset($_SESSION['success'])) {
     $mensaje = '<div class="alert alert-success">' . $_SESSION['success'] . '</div>';
@@ -264,7 +242,6 @@ if (isset($_SESSION['success'])) {
     $mensaje = '<div class="alert alert-info">' . $_SESSION['info'] . '</div>';
     unset($_SESSION['info']);
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -276,6 +253,21 @@ if (isset($_SESSION['success'])) {
     <link rel="stylesheet" href="../assets/css/styles.css">
     <link rel="stylesheet" href="../assets/css/reportes.css">
     <link rel="stylesheet" href="../assets/css/pdf-buttons.css">
+    <!-- Incluir Chart.js vía CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Se fuerza un tamaño mínimo para visualizar correctamente el canvas */
+        .chart-container {
+            width: 100%;
+            min-height: 300px;
+            position: relative;
+        }
+
+        canvas {
+            width: 100% !important;
+            height: 300px !important;
+        }
+    </style>
 </head>
 
 <body>
@@ -311,6 +303,12 @@ if (isset($_SESSION['success'])) {
 
             <?php echo $mensaje; ?>
 
+            <div class="breadcrumb">
+                <a href="../admin/dashboard.php">Dashboard</a> &gt;
+                <a href="reportes_dashboard.php">Reportes</a> &gt;
+                <span>Estadísticas de Reservas</span>
+            </div>
+
             <div class="report-filters">
                 <h2 class="filter-title">Filtros de Análisis</h2>
                 <form action="" method="GET">
@@ -319,12 +317,10 @@ if (isset($_SESSION['success'])) {
                             <label class="filter-label" for="fecha_inicio">Fecha Inicio:</label>
                             <input type="date" id="fecha_inicio" name="fecha_inicio" class="filter-input" value="<?php echo $fecha_inicio; ?>">
                         </div>
-
                         <div class="filter-group">
                             <label class="filter-label" for="fecha_fin">Fecha Fin:</label>
                             <input type="date" id="fecha_fin" name="fecha_fin" class="filter-input" value="<?php echo $fecha_fin; ?>">
                         </div>
-
                         <div class="filter-group">
                             <label class="filter-label" for="tipo">Tipo de Recurso:</label>
                             <select id="tipo" name="tipo" class="filter-select">
@@ -350,7 +346,6 @@ if (isset($_SESSION['success'])) {
                                 <?php endforeach; ?>
                             </select>
                         </div>
-
                         <div class="filter-group">
                             <label class="filter-label" for="visualizacion">Visualización:</label>
                             <select id="visualizacion" name="visualizacion" class="filter-select">
@@ -382,7 +377,6 @@ if (isset($_SESSION['success'])) {
                             <div class="stat-highlight"><?php echo $total_reservas; ?></div>
                             <div class="stat-label">Total Reservas</div>
                         </div>
-
                         <?php
                         $total_estados = [
                             'pendiente' => 0,
@@ -390,27 +384,22 @@ if (isset($_SESSION['success'])) {
                             'cancelada' => 0,
                             'completada' => 0
                         ];
-
                         foreach ($estados as $estado) {
                             $total_estados[$estado['estado']] = $estado['total_reservas'];
                         }
                         ?>
-
                         <div class="stat-item">
                             <div class="stat-highlight"><?php echo $total_estados['confirmada']; ?></div>
                             <div class="stat-label">Confirmadas</div>
                         </div>
-
                         <div class="stat-item">
                             <div class="stat-highlight"><?php echo $total_estados['pendiente']; ?></div>
                             <div class="stat-label">Pendientes</div>
                         </div>
-
                         <div class="stat-item">
                             <div class="stat-highlight"><?php echo $total_estados['cancelada']; ?></div>
                             <div class="stat-label">Canceladas</div>
                         </div>
-
                         <div class="stat-item">
                             <div class="stat-highlight"><?php echo $total_estados['completada']; ?></div>
                             <div class="stat-label">Completadas</div>
@@ -419,14 +408,14 @@ if (isset($_SESSION['success'])) {
                 </div>
             </div>
 
+            <!-- Sección de gráficos -->
             <div class="grid-2">
-                <!-- Tendencia de Reservas -->
+                <!-- Gráfico de Tendencia de Reservas -->
                 <div class="card">
                     <h2 class="card-title">Tendencia de Reservas <?php echo ucfirst($modo_visualizacion); ?></h2>
                     <div class="chart-container">
-                        <div class="mini-chart" id="tendencias-chart"></div>
+                        <canvas id="tendencias-chart"></canvas>
                     </div>
-
                     <?php if (!empty($tendencias)): ?>
                         <div class="table-container">
                             <table class="report-table">
@@ -457,13 +446,12 @@ if (isset($_SESSION['success'])) {
                     <?php endif; ?>
                 </div>
 
-                <!-- Reservas por Día de la Semana -->
+                <!-- Gráfico de Reservas por Día de la Semana -->
                 <div class="card">
                     <h2 class="card-title">Reservas por Día de la Semana</h2>
                     <div class="chart-container">
-                        <div class="mini-chart" id="dias-semana-chart"></div>
+                        <canvas id="dias-semana-chart"></canvas>
                     </div>
-
                     <?php if (!empty($dias_semana)): ?>
                         <div class="table-container">
                             <table class="report-table">
@@ -494,13 +482,12 @@ if (isset($_SESSION['success'])) {
             </div>
 
             <div class="grid-2" style="margin-top: 20px;">
-                <!-- Reservas por Hora del Día -->
+                <!-- Gráfico de Reservas por Hora del Día -->
                 <div class="card">
                     <h2 class="card-title">Reservas por Hora del Día</h2>
                     <div class="chart-container">
-                        <div class="mini-chart" id="horas-chart"></div>
+                        <canvas id="horas-chart"></canvas>
                     </div>
-
                     <?php if (!empty($horas)): ?>
                         <div class="table-container">
                             <table class="report-table">
@@ -533,13 +520,12 @@ if (isset($_SESSION['success'])) {
                     <?php endif; ?>
                 </div>
 
-                <!-- Distribución por Duración -->
+                <!-- Gráfico de Distribución por Duración -->
                 <div class="card">
                     <h2 class="card-title">Distribución por Duración</h2>
                     <div class="chart-container">
-                        <div class="mini-chart" id="duracion-chart"></div>
+                        <canvas id="duracion-chart"></canvas>
                     </div>
-
                     <?php if (!empty($duraciones)): ?>
                         <div class="table-container">
                             <table class="report-table">
@@ -570,13 +556,12 @@ if (isset($_SESSION['success'])) {
             </div>
 
             <div class="grid-2" style="margin-top: 20px;">
-                <!-- Distribución por Tipo de Recurso -->
+                <!-- Gráfico de Distribución por Tipo de Recurso -->
                 <div class="card">
                     <h2 class="card-title">Distribución por Tipo de Recurso</h2>
                     <div class="chart-container">
-                        <div class="mini-chart" id="tipos-chart"></div>
+                        <canvas id="tipos-chart"></canvas>
                     </div>
-
                     <?php if (!empty($tipos_recurso)): ?>
                         <div class="table-container">
                             <table class="report-table">
@@ -605,13 +590,12 @@ if (isset($_SESSION['success'])) {
                     <?php endif; ?>
                 </div>
 
-                <!-- Distribución por Estado -->
+                <!-- Gráfico de Distribución por Estado -->
                 <div class="card">
                     <h2 class="card-title">Distribución por Estado</h2>
                     <div class="chart-container">
-                        <div class="mini-chart" id="estados-chart"></div>
+                        <canvas id="estados-chart"></canvas>
                     </div>
-
                     <?php if (!empty($estados)): ?>
                         <div class="table-container">
                             <table class="report-table">
@@ -647,7 +631,6 @@ if (isset($_SESSION['success'])) {
 
             <div class="card" style="margin-top: 20px;">
                 <h2 class="card-title">Análisis y Recomendaciones</h2>
-
                 <?php if (empty($tendencias)): ?>
                     <div class="empty-state">
                         <p>No hay suficientes datos para generar análisis y recomendaciones.</p>
@@ -655,28 +638,20 @@ if (isset($_SESSION['success'])) {
                 <?php else: ?>
                     <div style="padding: 15px;">
                         <h3>Patrones Identificados</h3>
-
                         <?php
-                        // Determinar día de mayor uso
                         $max_dia = ['dia' => '', 'total' => 0];
                         foreach ($dias_semana as $dia) {
                             if ($dia['total_reservas'] > $max_dia['total']) {
                                 $max_dia = ['dia' => $dia['dia_semana'], 'total' => $dia['total_reservas']];
                             }
                         }
-
-                        // Determinar hora pico
                         $hora_pico = ['hora' => 0, 'total' => 0];
                         foreach ($horas as $hora) {
                             if ($hora['total_reservas'] > $hora_pico['total']) {
                                 $hora_pico = ['hora' => $hora['hora'], 'total' => $hora['total_reservas']];
                             }
                         }
-
-                        // Calcular tasa de cancelación
                         $tasa_cancelacion = ($total_estados['cancelada'] / $total_reservas) * 100;
-
-                        // Determinar tipo de recurso más usado
                         $tipo_mas_usado = ['tipo' => '', 'total' => 0];
                         foreach ($tipos_recurso as $tipo) {
                             if ($tipo['total_reservas'] > $tipo_mas_usado['total']) {
@@ -684,7 +659,6 @@ if (isset($_SESSION['success'])) {
                             }
                         }
                         ?>
-
                         <ul style="margin-bottom: 20px;">
                             <li><strong>Día de mayor demanda:</strong> <?php echo $max_dia['dia']; ?> (<?php echo $max_dia['total']; ?> reservas)</li>
                             <li><strong>Hora pico:</strong> <?php echo str_pad($hora_pico['hora'], 2, '0', STR_PAD_LEFT) . ':00'; ?> (<?php echo $hora_pico['total']; ?> reservas)</li>
@@ -693,22 +667,16 @@ if (isset($_SESSION['success'])) {
                         </ul>
 
                         <h3>Recomendaciones</h3>
-
                         <div style="background-color: rgba(74, 144, 226, 0.1); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
                             <?php if ($tasa_cancelacion > 20): ?>
                                 <p><strong>Alta tasa de cancelación detectada (<?php echo number_format($tasa_cancelacion, 1); ?>%):</strong> Considere implementar una política de confirmación anticipada o enviar recordatorios automáticos para reducir cancelaciones de última hora.</p>
                             <?php endif; ?>
-
                             <p><strong>Optimización de recursos:</strong> Para mejorar la disponibilidad, considere aumentar la cantidad de recursos de tipo "<?php echo $tipo_mas_usado['tipo']; ?>" que han mostrado alta demanda.</p>
-
                             <p><strong>Gestión de horarios pico:</strong> Hay una mayor demanda los días <?php echo $max_dia['dia']; ?> alrededor de las <?php echo str_pad($hora_pico['hora'], 2, '0', STR_PAD_LEFT) . ':00'; ?>. Considere aumentar el personal de soporte durante estos períodos o implementar un sistema de reservas prioritarias.</p>
-
                             <?php
-                            // Detectar patrones de crecimiento o decrecimiento
                             if (count($tendencias) >= 3) {
                                 $primero = reset($tendencias);
                                 $ultimo = end($tendencias);
-
                                 if ($ultimo['total_reservas'] > $primero['total_reservas'] * 1.2) {
                                     echo '<p><strong>Tendencia creciente:</strong> Se observa un aumento consistente en el número de reservas. Considere invertir en la ampliación de la infraestructura para satisfacer la creciente demanda.</p>';
                                 } elseif ($ultimo['total_reservas'] < $primero['total_reservas'] * 0.8) {
@@ -723,67 +691,268 @@ if (isset($_SESSION['success'])) {
         </div>
     </div>
 
-    <script src="../assets/js/main.js"></script>
-    <script src="../assets/js/reportes.js"></script>
+    <!-- Inicialización de gráficos con Chart.js y console.log para depurar datos -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Visualizaciones simplificadas para los gráficos
-            // En un entorno real, se integraría con bibliotecas como Chart.js
+            // 1. Datos y gráfico de Tendencia de Reservas (Líneas)
+            const ctxTendencias = document.getElementById('tendencias-chart').getContext('2d');
+            const tendenciasLabels = <?php echo json_encode(array_column($tendencias, 'periodo')); ?>;
+            const tendenciasTotal = <?php echo json_encode(array_column($tendencias, 'total_reservas')); ?>;
+            const tendenciasConfirmadas = <?php echo json_encode(array_column($tendencias, 'confirmadas')); ?>;
+            const tendenciasCanceladas = <?php echo json_encode(array_column($tendencias, 'canceladas')); ?>;
 
-            // Tendencias Chart
-            const tendenciasChart = document.getElementById('tendencias-chart');
-            if (tendenciasChart) {
-                // Representación simple para demostración
-                tendenciasChart.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px;color:#6c757d;"><i>Gráfico de tendencias de reservas por período</i></div>';
-            }
+            console.log("Datos Tendencia Labels:", tendenciasLabels);
+            console.log("Datos Tendencia Total:", tendenciasTotal);
+            console.log("Datos Tendencia Confirmadas:", tendenciasConfirmadas);
+            console.log("Datos Tendencia Canceladas:", tendenciasCanceladas);
 
-            // Días de la semana Chart
-            const diasSemanaChart = document.getElementById('dias-semana-chart');
-            if (diasSemanaChart) {
-                diasSemanaChart.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px;color:#6c757d;"><i>Gráfico de distribución por día de la semana</i></div>';
-            }
+            new Chart(ctxTendencias, {
+                type: 'line',
+                data: {
+                    labels: tendenciasLabels,
+                    datasets: [{
+                            label: 'Total Reservas',
+                            data: tendenciasTotal,
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            fill: true,
+                            tension: 0.2
+                        },
+                        {
+                            label: 'Confirmadas',
+                            data: tendenciasConfirmadas,
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            fill: true,
+                            tension: 0.2
+                        },
+                        {
+                            label: 'Canceladas',
+                            data: tendenciasCanceladas,
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            fill: true,
+                            tension: 0.2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Tendencia de Reservas'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
 
-            // Horas Chart
-            const horasChart = document.getElementById('horas-chart');
-            if (horasChart) {
-                horasChart.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px;color:#6c757d;"><i>Gráfico de distribución por hora del día</i></div>';
-            }
+            // 2. Datos y gráfico de Reservas por Día de la Semana (Barras)
+            const ctxDias = document.getElementById('dias-semana-chart').getContext('2d');
+            const diasLabels = <?php echo json_encode(array_column($dias_semana, 'dia_semana')); ?>;
+            const diasTotal = <?php echo json_encode(array_column($dias_semana, 'total_reservas')); ?>;
 
-            // Duración Chart
-            const duracionChart = document.getElementById('duracion-chart');
-            if (duracionChart) {
-                duracionChart.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px;color:#6c757d;"><i>Gráfico de distribución por duración</i></div>';
-            }
+            console.log("Datos Día de la Semana Labels:", diasLabels);
+            console.log("Datos Día de la Semana Total:", diasTotal);
 
-            // Tipos Chart
-            const tiposChart = document.getElementById('tipos-chart');
-            if (tiposChart) {
-                tiposChart.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px;color:#6c757d;"><i>Gráfico de distribución por tipo de recurso</i></div>';
-            }
+            new Chart(ctxDias, {
+                type: 'bar',
+                data: {
+                    labels: diasLabels,
+                    datasets: [{
+                        label: 'Total Reservas',
+                        data: diasTotal,
+                        backgroundColor: 'rgba(153, 102, 255, 0.6)',
+                        borderColor: 'rgba(153, 102, 255, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Reservas por Día de la Semana'
+                        }
+                    }
+                }
+            });
 
-            // Estados Chart
-            const estadosChart = document.getElementById('estados-chart');
-            if (estadosChart) {
-                estadosChart.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px;color:#6c757d;"><i>Gráfico de distribución por estado</i></div>';
-            }
+            // 3. Datos y gráfico de Reservas por Hora del Día (Barras)
+            const ctxHoras = document.getElementById('horas-chart').getContext('2d');
+            const horasLabels = <?php
+                                $labels = [];
+                                foreach ($horas as $h) {
+                                    $labels[] = str_pad($h['hora'], 2, '0', STR_PAD_LEFT) . ':00';
+                                }
+                                echo json_encode($labels);
+                                ?>;
+            const horasTotal = <?php echo json_encode(array_column($horas, 'total_reservas')); ?>;
+
+            console.log("Datos Horas Labels:", horasLabels);
+            console.log("Datos Horas Total:", horasTotal);
+
+            new Chart(ctxHoras, {
+                type: 'bar',
+                data: {
+                    labels: horasLabels,
+                    datasets: [{
+                        label: 'Total Reservas',
+                        data: horasTotal,
+                        backgroundColor: 'rgba(255, 159, 64, 0.6)',
+                        borderColor: 'rgba(255, 159, 64, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Reservas por Hora del Día'
+                        }
+                    }
+                }
+            });
+
+            // 4. Datos y gráfico de Distribución por Duración (Barras)
+            const ctxDuracion = document.getElementById('duracion-chart').getContext('2d');
+            const duracionLabels = <?php echo json_encode(array_column($duraciones, 'rango_duracion')); ?>;
+            const duracionTotal = <?php echo json_encode(array_column($duraciones, 'total_reservas')); ?>;
+
+            console.log("Datos Duración Labels:", duracionLabels);
+            console.log("Datos Duración Total:", duracionTotal);
+
+            new Chart(ctxDuracion, {
+                type: 'bar',
+                data: {
+                    labels: duracionLabels,
+                    datasets: [{
+                        label: 'Total Reservas',
+                        data: duracionTotal,
+                        backgroundColor: 'rgba(255, 205, 86, 0.6)',
+                        borderColor: 'rgba(255, 205, 86, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Distribución por Duración'
+                        }
+                    }
+                }
+            });
+
+            // 5. Datos y gráfico de Distribución por Tipo de Recurso (Doughnut)
+            const ctxTipos = document.getElementById('tipos-chart').getContext('2d');
+            const tiposLabels = <?php echo json_encode(array_column($tipos_recurso, 'tipo_recurso')); ?>;
+            const tiposTotal = <?php echo json_encode(array_column($tipos_recurso, 'total_reservas')); ?>;
+
+            console.log("Datos Tipo de Recurso Labels:", tiposLabels);
+            console.log("Datos Tipo de Recurso Total:", tiposTotal);
+
+            new Chart(ctxTipos, {
+                type: 'doughnut',
+                data: {
+                    labels: tiposLabels,
+                    datasets: [{
+                        label: 'Total Reservas',
+                        data: tiposTotal,
+                        backgroundColor: [
+                            'rgba(54, 162, 235, 0.6)',
+                            'rgba(75, 192, 192, 0.6)',
+                            'rgba(255, 99, 132, 0.6)',
+                            'rgba(255, 205, 86, 0.6)',
+                            'rgba(153, 102, 255, 0.6)'
+                        ],
+                        borderColor: [
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(255, 205, 86, 1)',
+                            'rgba(153, 102, 255, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Distribución por Tipo de Recurso'
+                        }
+                    }
+                }
+            });
+
+            // 6. Datos y gráfico de Distribución por Estado (Doughnut)
+            const ctxEstados = document.getElementById('estados-chart').getContext('2d');
+            const estadosLabels = <?php echo json_encode(array_map('ucfirst', array_column($estados, 'estado'))); ?>;
+            const estadosTotal = <?php echo json_encode(array_column($estados, 'total_reservas')); ?>;
+
+            console.log("Datos Estado Labels:", estadosLabels);
+            console.log("Datos Estado Total:", estadosTotal);
+
+            new Chart(ctxEstados, {
+                type: 'doughnut',
+                data: {
+                    labels: estadosLabels,
+                    datasets: [{
+                        label: 'Total Reservas',
+                        data: estadosTotal,
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.6)',
+                            'rgba(75, 192, 192, 0.6)',
+                            'rgba(255, 205, 86, 0.6)',
+                            'rgba(201, 203, 207, 0.6)'
+                        ],
+                        borderColor: [
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(255, 205, 86, 1)',
+                            'rgba(201, 203, 207, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Distribución por Estado'
+                        }
+                    }
+                }
+            });
         });
-
-        // Función para obtener clase CSS según el estado
-        function getEstadoClass(estado) {
-            switch (estado) {
-                case 'pendiente':
-                    return 'warning';
-                case 'confirmada':
-                    return 'success';
-                case 'cancelada':
-                    return 'danger';
-                case 'completada':
-                    return 'info';
-                default:
-                    return 'secondary';
-            }
-        }
     </script>
+    <script src="../assets/js/main.js"></script>
+    <script src="../assets/js/reportes.js"></script>
 </body>
 
 </html>

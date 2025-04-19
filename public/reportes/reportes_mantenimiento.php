@@ -326,6 +326,13 @@ function formatear_horas($horas)
 
             <?php echo $mensaje; ?>
 
+            <div class="breadcrumb">
+                <a href="../admin/dashboard.php">Dashboard</a> &gt;
+                <a href="reportes_dashboard.php">Reportes</a> &gt;
+                <span>Mantenimiento de Recursos</span>
+            </div>
+
+
             <div class="report-filters">
                 <h2 class="filter-title">Filtros de Búsqueda</h2>
                 <form action="" method="GET">
