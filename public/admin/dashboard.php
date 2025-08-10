@@ -66,6 +66,36 @@ $usuarios_recientes = $db->getRows("
     ORDER BY fecha_registro DESC
     LIMIT 5
 ");
+
+// Estadísticas de incidencias
+$incidencias_stats = $db->getRow("
+    SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN estado = 'reportada' THEN 1 ELSE 0 END) as reportadas,
+        SUM(CASE WHEN estado = 'en_revision' THEN 1 ELSE 0 END) as en_revision,
+        SUM(CASE WHEN estado = 'en_proceso' THEN 1 ELSE 0 END) as en_proceso,
+        SUM(CASE WHEN estado IN ('resuelta', 'cerrada') THEN 1 ELSE 0 END) as resueltas
+    FROM bitacora_incidencias
+");
+
+// Notificaciones no leídas
+$notificaciones_no_leidas = $db->getRow("
+    SELECT COUNT(*) as total
+    FROM notificaciones_incidencias
+    WHERE id_usuario_destino = ? AND leida = 0
+", [$_SESSION['usuario_id']])['total'] ?? 0;
+
+// Incidencias recientes
+$incidencias_recientes = $db->getRows("
+    SELECT bi.id_incidencia, bi.titulo, bi.prioridad, bi.estado, bi.fecha_reporte,
+           rc.nombre as nombre_recurso, rc.ubicacion,
+           u.nombre, u.apellido
+    FROM bitacora_incidencias bi
+    JOIN recursos rc ON bi.id_recurso = rc.id_recurso
+    JOIN usuarios u ON bi.id_usuario = u.id_usuario
+    ORDER BY bi.fecha_reporte DESC
+    LIMIT 5
+");
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -92,6 +122,8 @@ $usuarios_recientes = $db->getRows("
                 <a href="../reservas/calendario.php" class="nav-item">Calendario</a>
                 <a href="../mantenimiento/listar.php" class="nav-item">Mantenimiento</a>
                 <a href="../inventario/listar.php" class="nav-item">Inventario</a>
+                <a href="../bitacora/gestionar.php" class="nav-item">Gestionar Incidencias</a>
+                <a href="notificaciones_incidencias.php" class="nav-item">Notificaciones (<?php echo $notificaciones_no_leidas; ?>)</a>
                 <a href="../reportes/reportes_dashboard.php" class="nav-item">Reportes</a>
             </div>
         </div>
@@ -156,6 +188,30 @@ $usuarios_recientes = $db->getRows("
                         }
                         echo $en_mantenimiento;
                         ?>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Nueva fila de estadísticas para incidencias -->
+            <div class="stats-grid" style="margin-top: 20px;">
+                <div class="stat-card">
+                    <div class="stat-title">Total Incidencias</div>
+                    <div class="stat-value"><?php echo $incidencias_stats['total'] ?? 0; ?></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Incidencias Pendientes</div>
+                    <div class="stat-value"><?php echo ($incidencias_stats['reportadas'] ?? 0) + ($incidencias_stats['en_revision'] ?? 0); ?></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">En Proceso</div>
+                    <div class="stat-value"><?php echo $incidencias_stats['en_proceso'] ?? 0; ?></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Notificaciones</div>
+                    <div class="stat-value">
+                        <a href="notificaciones_incidencias.php" style="color: inherit; text-decoration: none;">
+                            <?php echo $notificaciones_no_leidas; ?>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -269,6 +325,61 @@ $usuarios_recientes = $db->getRows("
                         <?php endforeach; ?>
                     </table>
                     <a href="../usuarios/listar.php" class="view-all">Ver todos los usuarios</a>
+                <?php endif; ?>
+            </div>
+
+            <!-- Nueva tarjeta para incidencias recientes -->
+            <div class="card" style="margin-top: 20px;">
+                <div class="card-title">Incidencias Recientes</div>
+                <?php if (empty($incidencias_recientes)): ?>
+                    <p>No hay incidencias recientes.</p>
+                <?php else: ?>
+                    <table>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Recurso</th>
+                            <th>Título</th>
+                            <th>Prioridad</th>
+                            <th>Estado</th>
+                            <th>Fecha</th>
+                        </tr>
+                        <?php foreach ($incidencias_recientes as $incidencia): ?>
+                            <tr>
+                                <td><?php echo $incidencia['nombre'] . ' ' . $incidencia['apellido']; ?></td>
+                                <td><?php echo $incidencia['nombre_recurso']; ?></td>
+                                <td><?php echo htmlspecialchars(substr($incidencia['titulo'], 0, 30)) . (strlen($incidencia['titulo']) > 30 ? '...' : ''); ?></td>
+                                <td>
+                                    <span class="badge badge-<?php 
+                                        switch($incidencia['prioridad']) {
+                                            case 'baja': echo 'success'; break;
+                                            case 'media': echo 'warning'; break;
+                                            case 'alta': echo 'danger'; break;
+                                            case 'critica': echo 'danger'; break;
+                                            default: echo 'secondary';
+                                        }
+                                    ?>">
+                                        <?php echo ucfirst($incidencia['prioridad']); ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge badge-<?php 
+                                        switch($incidencia['estado']) {
+                                            case 'reportada': echo 'warning'; break;
+                                            case 'en_revision': echo 'info'; break;
+                                            case 'en_proceso': echo 'primary'; break;
+                                            case 'resuelta': echo 'success'; break;
+                                            case 'cerrada': echo 'secondary'; break;
+                                            default: echo 'secondary';
+                                        }
+                                    ?>">
+                                        <?php echo ucfirst(str_replace('_', ' ', $incidencia['estado'])); ?>
+                                    </span>
+                                </td>
+                                <td><?php echo format_date($incidencia['fecha_reporte'], true); ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </table>
+                    <a href="../bitacora/gestionar.php" class="view-all">Ver todas las incidencias</a>
                 <?php endif; ?>
             </div>
         </div>

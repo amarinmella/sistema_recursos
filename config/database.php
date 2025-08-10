@@ -15,7 +15,21 @@ class Database
     private function __construct()
     {
         // Cargar configuración desde config.ini
-        $config = parse_ini_file(__DIR__ . '/config.ini');
+        $configPath = __DIR__ . '/config.ini';
+        if (!file_exists($configPath)) {
+            $this->error = "Archivo de configuración no encontrado: " . $configPath;
+            error_log($this->error);
+            $this->connection = null;
+            return;
+        }
+        
+        $config = parse_ini_file($configPath);
+        if ($config === false) {
+            $this->error = "Error al parsear el archivo de configuración";
+            error_log($this->error);
+            $this->connection = null;
+            return;
+        }
 
         // Configuración de la base de datos
         $host = $config['host'];
@@ -36,6 +50,7 @@ class Database
         } catch (Exception $e) {
             $this->error = $e->getMessage();
             error_log($this->error);
+            $this->connection = null; // Asegurar que connection sea null en caso de error
         }
     }
 
@@ -55,6 +70,11 @@ class Database
      */
     public function getConnection()
     {
+        if ($this->connection === null) {
+            $this->error = "No hay conexión a la base de datos disponible";
+            error_log($this->error);
+            return false;
+        }
         return $this->connection;
     }
 
@@ -63,6 +83,13 @@ class Database
      */
     public function query($sql, $params = [])
     {
+        // Verificar que la conexión esté disponible
+        if ($this->connection === null) {
+            $this->error = "No hay conexión a la base de datos disponible";
+            error_log($this->error);
+            return false;
+        }
+
         try {
             // Si no hay parámetros, ejecutar consulta directa
             if (empty($params)) {
@@ -128,6 +155,13 @@ class Database
      */
     public function getRow($sql, $params = [])
     {
+        // Verificar que la conexión esté disponible
+        if ($this->connection === null) {
+            $this->error = "No hay conexión a la base de datos disponible";
+            error_log($this->error);
+            return false;
+        }
+
         $result = $this->query($sql, $params);
         if ($result === false) {
             return false;
@@ -142,6 +176,13 @@ class Database
      */
     public function getRows($sql, $params = [])
     {
+        // Verificar que la conexión esté disponible
+        if ($this->connection === null) {
+            $this->error = "No hay conexión a la base de datos disponible";
+            error_log($this->error);
+            return false;
+        }
+
         $result = $this->query($sql, $params);
         if ($result === false) {
             return false;
@@ -159,6 +200,13 @@ class Database
      */
     public function insert($table, $data)
     {
+        // Verificar que la conexión esté disponible
+        if ($this->connection === null) {
+            $this->error = "No hay conexión a la base de datos disponible";
+            error_log($this->error);
+            return false;
+        }
+
         try {
             $fields = array_keys($data);
             $placeholders = array_fill(0, count($fields), '?');
@@ -213,6 +261,13 @@ class Database
      */
     public function update($table, $data, $where, $params = [])
     {
+        // Verificar que la conexión esté disponible
+        if ($this->connection === null) {
+            $this->error = "No hay conexión a la base de datos disponible";
+            error_log($this->error);
+            return false;
+        }
+
         try {
             $fields = [];
             foreach ($data as $key => $value) {
@@ -242,6 +297,13 @@ class Database
      */
     public function delete($table, $condition, $params = [])
     {
+        // Verificar que la conexión esté disponible
+        if ($this->connection === null) {
+            $this->error = "No hay conexión a la base de datos disponible";
+            error_log($this->error);
+            return false;
+        }
+
         try {
             $sql = "DELETE FROM {$table} WHERE {$condition}";
             $stmt = $this->connection->prepare($sql);
