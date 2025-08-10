@@ -191,6 +191,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <a href="../reservas/listar.php" class="nav-item">Reservas</a>
                 <a href="../reservas/calendario.php" class="nav-item">Calendario</a>
                 <a href="../mantenimiento/listar.php" class="nav-item">Mantenimiento</a>
+                <a href="../inventario/listar.php" class="nav-item">Inventario</a>
                 <a href="../reportes/index.php" class="nav-item">Reportes</a>
             </div>
         </div>
@@ -217,14 +218,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <div class="form-group">
                         <label for="id_tipo">Tipo de Recurso *</label>
-                        <select id="id_tipo" name="id_tipo" required>
-                            <option value="">Seleccione un tipo</option>
-                            <?php foreach ($tipos as $tipo): ?>
-                                <option value="<?php echo $tipo['id_tipo']; ?>" <?php echo ($recurso['id_tipo'] == $tipo['id_tipo']) ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($tipo['nombre']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <select id="id_tipo" name="id_tipo" required style="flex: 1;">
+                                <option value="">Seleccione un tipo</option>
+                                <?php foreach ($tipos as $tipo): ?>
+                                    <option value="<?php echo $tipo['id_tipo']; ?>" <?php echo ($recurso['id_tipo'] == $tipo['id_tipo']) ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($tipo['nombre']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <a href="gestionar_tipos.php" class="btn btn-secondary" style="white-space: nowrap; padding: 8px 12px; font-size: 14px;">
+                                Gestionar Tipos
+                            </a>
+                        </div>
                     </div>
 
                     <div class="form-group">

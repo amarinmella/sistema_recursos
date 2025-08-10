@@ -131,6 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <a href="../reservas/listar.php" class="nav-item">Reservas</a>
                 <a href="../reservas/calendario.php" class="nav-item">Calendario</a>
                 <a href="../mantenimiento/listar.php" class="nav-item">Mantenimiento</a>
+                <a href="../inventario/listar.php" class="nav-item">Inventario</a>
                 <a href="../reportes/index.php" class="nav-item">Reportes</a>
             </div>
         </div>
@@ -157,14 +158,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <div class="form-group">
                         <label for="id_tipo">Tipo de Recurso *</label>
-                        <select id="id_tipo" name="id_tipo" required>
-                            <option value="">Seleccione un tipo</option>
-                            <?php foreach ($tipos as $tipo): ?>
-                                <option value="<?php echo $tipo['id_tipo']; ?>">
-                                    <?php echo htmlspecialchars($tipo['nombre']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <select id="id_tipo" name="id_tipo" required style="flex: 1;">
+                                <option value="">Seleccione un tipo</option>
+                                <?php foreach ($tipos as $tipo): ?>
+                                    <option value="<?php echo $tipo['id_tipo']; ?>">
+                                        <?php echo htmlspecialchars($tipo['nombre']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <a href="gestionar_tipos.php" class="btn btn-secondary" style="white-space: nowrap; padding: 8px 12px; font-size: 14px;">
+                                Gestionar Tipos
+                            </a>
+                        </div>
+                        <small style="color: #6c757d; margin-top: 5px; display: block;">
+                            ¿No encuentras el tipo que necesitas? Usa el botón "Gestionar Tipos" para crear, modificar o eliminar tipos de recursos.
+                        </small>
                     </div>
 
                     <div class="form-group">

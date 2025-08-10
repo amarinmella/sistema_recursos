@@ -14,12 +14,15 @@ class Database
      */
     private function __construct()
     {
+        // Cargar configuración desde config.ini
+        $config = parse_ini_file(__DIR__ . '/config.ini');
+
         // Configuración de la base de datos
-        $host = 'localhost';
-        $user = 'root';       // Cambiar en producción
-        $pass = '';           // Cambiar en producción
-        $name = 'sistema_recursos';
-        $charset = 'utf8mb4';
+        $host = $config['host'];
+        $user = $config['user'];
+        $pass = $config['pass'];
+        $name = $config['name'];
+        $charset = $config['charset'];
 
         try {
             // Crear conexión

@@ -200,6 +200,24 @@ $distribucion_por_tipo = $db->getRows($sql_distribucion, [
     $fecha_fin . ' 23:59:59'
 ]);
 
+// Preparar datos para gráfico: Distribución por Recurso (Top 10)
+$recursos_chart_data = [];
+if (!empty($recursos_uso)) {
+    $recursos_con_uso = array_filter($recursos_uso, function ($r) {
+        return intval($r['total_reservas']) > 0;
+    });
+    usort($recursos_con_uso, function ($a, $b) {
+        return intval($b['total_reservas']) <=> intval($a['total_reservas']);
+    });
+    $recursos_con_uso = array_slice($recursos_con_uso, 0, 10);
+    foreach ($recursos_con_uso as $r) {
+        $recursos_chart_data[] = [
+            'nombre' => $r['nombre_recurso'],
+            'total' => intval($r['total_reservas'])
+        ];
+    }
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -211,6 +229,7 @@ $distribucion_por_tipo = $db->getRows($sql_distribucion, [
     <link rel="stylesheet" href="../assets/css/styles.css">
     <link rel="stylesheet" href="../assets/css/reportes.css">
     <link rel="stylesheet" href="../assets/css/pdf-buttons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
@@ -230,6 +249,7 @@ $distribucion_por_tipo = $db->getRows($sql_distribucion, [
                 <a href="../reservas/calendario.php" class="nav-item">Calendario</a>
                 <?php if (has_role([ROL_ADMIN, ROL_ACADEMICO])): ?>
                     <a href="../mantenimiento/listar.php" class="nav-item">Mantenimiento</a>
+                    <a href="../inventario/listar.php" class="nav-item">Inventario</a>
                     <a href="../reportes/reportes_dashboard.php" class="nav-item active">Reportes</a>
                 <?php endif; ?>
             </div>
@@ -368,7 +388,9 @@ $distribucion_por_tipo = $db->getRows($sql_distribucion, [
 
                 <div class="card">
                     <h2 class="card-title">Distribución de Uso por Tipo de Recurso</h2>
-                    <div class="mini-chart" id="tipo-recursos-chart"></div>
+                    <div style="width:100%; height:260px;">
+                        <canvas class="mini-chart" id="tipo-recursos-chart"></canvas>
+                    </div>
 
                     <?php if (!empty($distribucion_por_tipo)): ?>
                         <table style="width: 100%; margin-top: 10px;">
@@ -388,6 +410,13 @@ $distribucion_por_tipo = $db->getRows($sql_distribucion, [
                             </tbody>
                         </table>
                     <?php endif; ?>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">Distribución de Uso por Recurso</h2>
+                <div style="width:100%; height:320px;">
+                    <canvas id="recursos-chart"></canvas>
                 </div>
             </div>
 
@@ -560,20 +589,13 @@ $distribucion_por_tipo = $db->getRows($sql_distribucion, [
     </div>
 
     <script src="../assets/js/main.js"></script>
+    <script>
+        window.recursosPopularesData = <?php echo json_encode($recursos_chart_data, JSON_UNESCAPED_UNICODE); ?>;
+        window.distribucionPorTipoData = <?php echo json_encode(array_map(function($t){ return ['tipo'=>$t['tipo'], 'total'=>(int)$t['total_reservas']]; }, $distribucion_por_tipo), JSON_UNESCAPED_UNICODE); ?>;
+    </script>
     <script src="../assets/js/reportes.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Inicializar el gráfico de distribución por tipo de recurso
-            const tipoRecursosChart = document.getElementById('tipo-recursos-chart');
-
-            if (tipoRecursosChart) {
-                // Aquí se implementaría la lógica para renderizar el gráfico
-                // con una biblioteca como Chart.js
-
-                // Por ahora, solo un mensaje temporal
-                tipoRecursosChart.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#6c757d;">Gráfico de distribución por tipo de recurso</div>';
-            }
-
             // Agregar tooltip a los elementos de la tabla
             const tablaCeldas = document.querySelectorAll('.report-table td');
             tablaCeldas.forEach(celda => {

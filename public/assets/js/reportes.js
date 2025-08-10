@@ -23,6 +23,12 @@ function initCharts() {
     renderRecursosChart(recursosChart);
   }
 
+  // Gráfico de distribución por tipo de recurso
+  const tipoRecursosChart = document.getElementById("tipo-recursos-chart");
+  if (tipoRecursosChart) {
+    renderTipoRecursosChart(tipoRecursosChart);
+  }
+
   // Gráfico de estado de reservas
   const estadoChart = document.getElementById("estado-chart");
   if (estadoChart) {
@@ -61,20 +67,16 @@ function initCharts() {
  * @param {HTMLElement} container - Elemento contenedor del gráfico
  */
 function renderRecursosChart(container) {
-  // Aquí se implementaría la lógica para renderizar el gráfico
-  // usando una biblioteca como Chart.js o similar
+    const labels = recursosPopularesData.map(item => item.nombre);
+    const data = recursosPopularesData.map(item => item.total);
 
-  // Ejemplo de implementación (pseudocódigo):
-  /*
-    const data = [...]; // Obtener datos de la tabla o de un dataset en el HTML
-    
     new Chart(container, {
         type: 'bar',
         data: {
-            labels: data.map(item => item.nombre),
+            labels: labels,
             datasets: [{
                 label: 'Número de Reservas',
-                data: data.map(item => item.total),
+                data: data,
                 backgroundColor: '#4a90e2'
             }]
         },
@@ -83,11 +85,6 @@ function renderRecursosChart(container) {
             maintainAspectRatio: false
         }
     });
-    */
-
-  // Mensaje temporal en lugar del gráfico
-  container.innerHTML =
-    '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#6c757d;">Gráfico de recursos más utilizados</div>';
 }
 
 /**
@@ -95,9 +92,23 @@ function renderRecursosChart(container) {
  * @param {HTMLElement} container - Elemento contenedor del gráfico
  */
 function renderEstadoChart(container) {
-  // Mensaje temporal en lugar del gráfico
-  container.innerHTML =
-    '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#6c757d;">Gráfico de estado de reservas</div>';
+    const labels = reservasPorEstadoData.map(item => item.estado);
+    const data = reservasPorEstadoData.map(item => item.total);
+
+    new Chart(container, {
+        type: 'pie',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: ['#f1c40f', '#2ecc71', '#e74c3c', '#3498db']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
 }
 
 /**
@@ -138,6 +149,50 @@ function renderMantenimientosChart(container) {
   // Mensaje temporal en lugar del gráfico
   container.innerHTML =
     '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#6c757d;">Gráfico de mantenimientos</div>';
+}
+
+/**
+ * Renderiza el gráfico de distribución por tipo de recurso
+ * @param {HTMLElement} container - Canvas del gráfico
+ */
+function renderTipoRecursosChart(container) {
+  if (!window.distribucionPorTipoData || !Array.isArray(window.distribucionPorTipoData)) {
+    return;
+  }
+  const labels = window.distribucionPorTipoData.map((i) => i.tipo);
+  const data = window.distribucionPorTipoData.map((i) => i.total);
+  const palette = [
+    "#4a90e2",
+    "#50e3c2",
+    "#f5a623",
+    "#e74c3c",
+    "#7b8a8b",
+    "#9b59b6",
+    "#2ecc71",
+    "#3498db",
+    "#f1c40f",
+    "#34495e",
+  ];
+
+  new Chart(container, {
+    type: "doughnut",
+    data: {
+      labels,
+      datasets: [
+        {
+          data,
+          backgroundColor: labels.map((_, idx) => palette[idx % palette.length]),
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "bottom" },
+      },
+    },
+  });
 }
 
 /**

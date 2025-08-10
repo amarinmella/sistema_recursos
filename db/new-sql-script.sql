@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     contraseña VARCHAR(255) NOT NULL,
     id_rol INT NOT NULL,
     activo TINYINT(1) DEFAULT 1,
+    requiere_cambio_contrasena TINYINT(1) DEFAULT 0,
     fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
     ultimo_login DATETIME,
     FOREIGN KEY (id_rol) REFERENCES roles(id_rol) ON DELETE RESTRICT
@@ -131,15 +132,25 @@ INSERT INTO roles (nombre, descripcion, permisos) VALUES
 
 -- Insertar tipos de recursos básicos
 INSERT INTO tipos_recursos (nombre, descripcion) VALUES
-('aula', 'Sala de clases estándar'),
-('laboratorio', 'Laboratorio equipado para prácticas'),
-('proyector', 'Equipo de proyección portátil'),
-('notebook', 'Computadora portátil'),
-('sala_reuniones', 'Sala para reuniones y eventos');
+('Aula', 'Sala de clases estándar'),
+('Laboratorio', 'Laboratorio equipado para prácticas'),
+('Proyector', 'Equipo de proyección portátil'),
+('Notebook', 'Computadora portátil'),
+('Sala de Reuniones', 'Sala para reuniones y eventos');
+
+-- Añadir tipos de recursos adicionales solicitados
+INSERT IGNORE INTO tipos_recursos (nombre, descripcion) VALUES
+('Desktop', ''),
+('Laboratorio de Informática', ''),
+('Smart TV', ''),
+('Impresora', ''),
+('Access Point (AP)', ''),
+('Laboratorio Física', ''),
+('Laboratorio Biología', '');
 
 -- Crear usuario administrador inicial (contraseña: admin123)
-INSERT INTO usuarios (nombre, apellido, email, contraseña, id_rol) VALUES
-('Admin', 'Sistema', 'admin@sistema.edu', '$2y$10$rNVcB7qUMq6xb2Br5Rb8b.XrtLbD0holtxIEqZznzCsKtUgbUVRnS', 1);
+INSERT INTO usuarios (nombre, apellido, email, contraseña, id_rol, requiere_cambio_contrasena) VALUES
+('Admin', 'Sistema', 'admin@sistema.edu', '$2y$10$rNVcB7qUMq6xb2Br5Rb8b.XrtLbD0holtxIEqZznzCsKtUgbUVRnS', 1, 1);
 
 -- A continuación se incluyen los procedimientos almacenados y triggers como comentarios
 -- Puedes añadirlos manualmente a través de phpMyAdmin después de importar este script

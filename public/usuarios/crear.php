@@ -20,9 +20,9 @@ if (!has_role(ROL_ADMIN)) {
     exit;
 }
 
-// Obtener roles
+// Obtener roles (solo Administrador y Profesor)
 $db = Database::getInstance();
-$roles = $db->getRows("SELECT id_rol, nombre FROM roles ORDER BY nombre");
+$roles = $db->getRows("SELECT id_rol, nombre FROM roles WHERE nombre IN ('Administrador', 'Profesor') ORDER BY nombre");
 
 // Verificar si hay mensaje de éxito o error
 $mensaje = '';
@@ -164,6 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <a href="../reservas/listar.php" class="nav-item">Reservas</a>
                 <a href="../reservas/calendario.php" class="nav-item">Calendario</a>
                 <a href="../mantenimiento/listar.php" class="nav-item">Mantenimiento</a>
+                <a href="../inventario/listar.php" class="nav-item">Inventario</a>
                 <a href="../reportes/index.php" class="nav-item">Reportes</a>
             </div>
         </div>
@@ -240,9 +241,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <ul>
                     <li><strong>Administrador:</strong> Acceso completo a todas las funcionalidades del sistema.</li>
-                    <li><strong>Académico:</strong> Puede gestionar recursos y reservas, pero no administrar usuarios.</li>
                     <li><strong>Profesor:</strong> Puede realizar y gestionar sus propias reservas.</li>
-                    <li><strong>Estudiante:</strong> Acceso limitado para realizar reservas según disponibilidad.</li>
                 </ul>
 
                 <p class="mt-4">

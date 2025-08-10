@@ -20,18 +20,31 @@ if (!has_role(ROL_ADMIN)) {
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    $_SESSION['error'] = "Acción no permitida";
+    redirect('listar.php');
+    exit;
+}
+
+// Validar token CSRF
+if (!isset($_POST['csrf_token']) || !validate_csrf_token($_POST['csrf_token'])) {
+    $_SESSION['error'] = "Error de validación de seguridad. Inténtalo de nuevo.";
+    redirect('listar.php');
+    exit;
+}
+
 // Obtener instancia de la base de datos
 $db = Database::getInstance();
 
 // Verificar acción y ID
-if (!isset($_GET['accion']) || !isset($_GET['id'])) {
+if (!isset($_POST['accion']) || !isset($_POST['id'])) {
     $_SESSION['error'] = "Acción o ID no especificados";
     redirect('listar.php');
     exit;
 }
 
-$accion = $_GET['accion'];
-$id_usuario = intval($_GET['id']);
+$accion = $_POST['accion'];
+$id_usuario = intval($_POST['id']);
 
 // Verificar que el ID es válido
 if ($id_usuario <= 0) {

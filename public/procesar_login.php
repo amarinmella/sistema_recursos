@@ -62,6 +62,13 @@ try {
             exit;
         }
 
+        if ($usuario['requiere_cambio_contrasena']) {
+            $_SESSION['usuario_id'] = $usuario['id_usuario'];
+            $_SESSION['requiere_cambio'] = true;
+            redirect('cambiar_contrasena.php');
+            exit;
+        }
+
         // Actualizar último login
         $db->update(
             'usuarios',

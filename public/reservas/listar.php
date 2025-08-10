@@ -132,6 +132,7 @@ $puede_gestionar = has_role([ROL_ADMIN, ROL_ACADEMICO]);
                 <a href="../reservas/calendario.php" class="nav-item">Calendario</a>
                 <?php if (has_role([ROL_ADMIN, ROL_ACADEMICO])): ?>
                     <a href="../mantenimiento/listar.php" class="nav-item">Mantenimiento</a>
+                    <a href="../inventario/listar.php" class="nav-item">Inventario</a>
                     <a href="../reportes/index.php" class="nav-item">Reportes</a>
                 <?php endif; ?>
             </div>

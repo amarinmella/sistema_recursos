@@ -150,3 +150,43 @@ function generate_token($length = 32)
 {
     return bin2hex(random_bytes($length / 2));
 }
+
+/**
+ * Genera y almacena un token CSRF en la sesión
+ *
+ * @return string El token generado
+ */
+function generate_csrf_token()
+{
+    if (empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
+
+/**
+ * Valida un token CSRF
+ *
+ * @param string $token El token enviado desde el formulario
+ * @return bool True si el token es válido, false en caso contrario
+ */
+function validate_csrf_token($token)
+{
+    if (!isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $token)) {
+        return false;
+    }
+    // Una vez usado, el token se debe regenerar para evitar ataques de tipo "replay"
+    unset($_SESSION['csrf_token']);
+    return true;
+}
+
+/**
+ * Genera un campo de input HTML para el token CSRF
+ *
+ * @return string El campo de input HTML
+ */
+function csrf_input()
+{
+    $token = generate_csrf_token();
+    return '<input type="hidden" name="csrf_token" value="' . $token . '">';
+}

@@ -91,6 +91,7 @@ $usuarios_recientes = $db->getRows("
                 <a href="../reservas/listar.php" class="nav-item">Reservas</a>
                 <a href="../reservas/calendario.php" class="nav-item">Calendario</a>
                 <a href="../mantenimiento/listar.php" class="nav-item">Mantenimiento</a>
+                <a href="../inventario/listar.php" class="nav-item">Inventario</a>
                 <a href="../reportes/reportes_dashboard.php" class="nav-item">Reportes</a>
             </div>
         </div>

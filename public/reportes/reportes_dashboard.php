@@ -108,6 +108,7 @@ $estadisticas['total_mantenimientos'] = $resultado ? $resultado['total'] : 0;
                 <a href="../reservas/calendario.php" class="nav-item">Calendario</a>
                 <?php if (has_role([ROL_ADMIN, ROL_ACADEMICO])): ?>
                     <a href="../mantenimiento/listar.php" class="nav-item">Mantenimiento</a>
+                    <a href="../inventario/listar.php" class="nav-item">Inventario</a>
                     <a href="../reportes/reportes_dashboard.php" class="nav-item active">Reportes</a>
                 <?php endif; ?>
             </div>
@@ -266,8 +267,14 @@ $estadisticas['total_mantenimientos'] = $resultado ? $resultado['total'] : 0;
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="../assets/js/main.js"></script>
     <script src="../assets/js/reportes.js"></script>
+
+    <script>
+        const recursosPopularesData = <?php echo json_encode($recursos_populares); ?>;
+        const reservasPorEstadoData = <?php echo json_encode($reservas_por_estado); ?>;
+    </script>
 </body>
 
 </html>

@@ -106,6 +106,7 @@ $puede_modificar = has_role(ROL_ADMIN);
                 <a href="../reservas/listar.php" class="nav-item">Reservas</a>
                 <a href="../reservas/calendario.php" class="nav-item">Calendario</a>
                 <a href="../mantenimiento/listar.php" class="nav-item">Mantenimiento</a>
+                <a href="../inventario/listar.php" class="nav-item">Inventario</a>
                 <a href="../reportes/index.php" class="nav-item">Reportes</a>
             </div>
         </div>
@@ -196,23 +197,25 @@ $puede_modificar = has_role(ROL_ADMIN);
                                         <td>
                                             <a href="ver.php?id=<?php echo $usuario['id_usuario']; ?>" class="accion-btn btn-editar">Ver</a>
 
-                                            <?php if ($puede_modificar): ?>
-                                                <a href="editar.php?id=<?php echo $usuario['id_usuario']; ?>" class="accion-btn btn-editar">Editar</a>
-
-                                                <?php if (has_role(ROL_ADMIN) && $usuario['id_usuario'] != $_SESSION['usuario_id']): ?>
+                                            <?php if ($puede_modificar && has_role(ROL_ADMIN) && $usuario['id_usuario'] != $_SESSION['usuario_id']): ?>
+                                                <form action="procesar.php" method="POST" style="display:inline;">
+                                                    <input type="hidden" name="id" value="<?php echo $usuario['id_usuario']; ?>">
+                                                    <?php echo csrf_input(); ?>
                                                     <?php if ($usuario['activo']): ?>
-                                                        <a href="procesar.php?accion=desactivar&id=<?php echo $usuario['id_usuario']; ?>"
-                                                            onclick="return confirm('¿Estás seguro de desactivar este usuario?');"
-                                                            class="accion-btn btn-eliminar">Desactivar</a>
+                                                        <input type="hidden" name="accion" value="desactivar">
+                                                        <button type="submit" class="accion-btn btn-eliminar" onclick="return confirm('¿Estás seguro de desactivar este usuario?');">Desactivar</button>
                                                     <?php else: ?>
-                                                        <a href="procesar.php?accion=activar&id=<?php echo $usuario['id_usuario']; ?>"
-                                                            class="accion-btn btn-editar">Activar</a>
+                                                        <input type="hidden" name="accion" value="activar">
+                                                        <button type="submit" class="accion-btn btn-editar">Activar</button>
                                                     <?php endif; ?>
+                                                </form>
 
-                                                    <a href="procesar.php?accion=eliminar&id=<?php echo $usuario['id_usuario']; ?>"
-                                                        onclick="return confirm('¿Estás seguro de eliminar este usuario? Esta acción es irreversible.');"
-                                                        class="accion-btn btn-eliminar">Eliminar</a>
-                                                <?php endif; ?>
+                                                <form action="procesar.php" method="POST" style="display:inline;">
+                                                    <input type="hidden" name="id" value="<?php echo $usuario['id_usuario']; ?>">
+                                                    <input type="hidden" name="accion" value="eliminar">
+                                                    <?php echo csrf_input(); ?>
+                                                    <button type="submit" class="accion-btn btn-eliminar" onclick="return confirm('¿Estás seguro de eliminar este usuario? Esta acción es irreversible.');">Eliminar</button>
+                                                </form>
                                             <?php endif; ?>
                                         </td>
                                     </tr>

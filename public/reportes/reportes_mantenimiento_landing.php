@@ -95,7 +95,8 @@ if (isset($_SESSION['success'])) {
                 <a href="../reservas/listar.php" class="nav-item">Reservas</a>
                 <a href="../reservas/calendario.php" class="nav-item">Calendario</a>
                 <?php if (has_role([ROL_ADMIN, ROL_ACADEMICO])): ?>
-                    <a href="../mantenimiento/listar.php" class="nav-item">Mantenimiento</a>
+                    <a href="../mantenimiento/listar.php" class="nav-item active">Mantenimiento</a>
+                    <a href="../inventario/listar.php" class="nav-item">Inventario</a>
                     <a href="../reportes/reportes_dashboard.php" class="nav-item active">Reportes</a>
                 <?php endif; ?>
             </div>

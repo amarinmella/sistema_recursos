@@ -41,8 +41,8 @@ if (!$usuario) {
     exit;
 }
 
-// Obtener roles
-$roles = $db->getRows("SELECT id_rol, nombre FROM roles ORDER BY nombre");
+// Obtener roles (solo Administrador y Profesor)
+$roles = $db->getRows("SELECT id_rol, nombre FROM roles WHERE nombre IN ('Administrador', 'Profesor') ORDER BY nombre");
 
 // Verificar si hay mensaje de éxito o error
 $mensaje = '';
@@ -177,6 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <a href="../reservas/listar.php" class="nav-item">Reservas</a>
                 <a href="../reservas/calendario.php" class="nav-item">Calendario</a>
                 <a href="../mantenimiento/listar.php" class="nav-item">Mantenimiento</a>
+                <a href="../inventario/listar.php" class="nav-item">Inventario</a>
                 <a href="../reportes/index.php" class="nav-item">Reportes</a>
             </div>
         </div>
