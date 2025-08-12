@@ -23,10 +23,16 @@ class Database
         $pass = $config['pass'];
         $name = $config['name'];
         $charset = $config['charset'];
+        $socket = $config['socket'] ?? null;
 
         try {
-            // Crear conexión
-            $this->connection = new mysqli($host, $user, $pass, $name);
+            // Crear conexión con socket si está disponible
+            if ($socket && file_exists($socket)) {
+                $this->connection = new mysqli($host, $user, $pass, $name, 3306, $socket);
+            } else {
+                $this->connection = new mysqli($host, $user, $pass, $name);
+            }
+            
             $this->connection->set_charset($charset);
 
             // Verificar conexión

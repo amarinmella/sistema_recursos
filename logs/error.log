@@ -4,3 +4,10 @@ Stack trace:
 #0 {main}
   thrown in /Applications/XAMPP/xamppfiles/htdocs/gestion_recursos_digitales-main/test_profesor_roles.php on line 26
 [12-Aug-2025 10:15:29 America/Santiago] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in /Applications/XAMPP/xamppfiles/htdocs/gestion_recursos_digitales-main/test_menu_functions.php on line 14
+[12-Aug-2025 12:07:48 America/Santiago] No such file or directory
+[12-Aug-2025 12:07:48 America/Santiago] PHP Fatal error:  Uncaught Error: Call to a member function query() on null in /Applications/XAMPP/xamppfiles/htdocs/gestion_recursos_digitales-main/config/database.php:69
+Stack trace:
+#0 /Applications/XAMPP/xamppfiles/htdocs/gestion_recursos_digitales-main/config/database.php(145): Database->query('SHOW TABLES LIK...', Array)
+#1 /Applications/XAMPP/xamppfiles/htdocs/gestion_recursos_digitales-main/verificar_tabla_inventario.php(11): Database->getRows('SHOW TABLES LIK...')
+#2 {main}
+  thrown in /Applications/XAMPP/xamppfiles/htdocs/gestion_recursos_digitales-main/config/database.php on line 69

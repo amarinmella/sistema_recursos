@@ -34,8 +34,6 @@ $db = Database::getInstance();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id_incidencia = $_POST['id_incidencia'] ?? '';
     $accion = $_POST['accion'] ?? '';
-    $nuevo_estado = $_POST['nuevo_estado'] ?? '';
-    $notas = trim($_POST['notas'] ?? '');
     
     if (!empty($id_incidencia) && !empty($accion)) {
         $incidencia = $db->getRow("SELECT * FROM bitacora_incidencias WHERE id_incidencia = ?", [$id_incidencia]);
@@ -59,91 +57,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             
             switch ($accion) {
-                case 'cambiar_estado':
-                    // Solo administradores pueden cambiar estados
-                    if (!$es_admin) {
-                        $_SESSION['error'] = "No tienes permisos para cambiar el estado de incidencias";
-                        redirect('gestionar.php');
-                        exit;
-                    }
-                    
-                    if (!empty($nuevo_estado)) {
-                        $fecha_resolucion = ($nuevo_estado === 'resuelta' || $nuevo_estado === 'cerrada') ? date('Y-m-d H:i:s') : null;
-                        
-                        $resultado = $db->update("bitacora_incidencias", [
-                            'estado' => $nuevo_estado,
-                            'fecha_resolucion' => $fecha_resolucion,
-                            'notas_administrador' => $notas,
-                            'id_administrador_resuelve' => $_SESSION['usuario_id']
-                        ], "id_incidencia = ?", [$id_incidencia]);
-                        
-                        if ($resultado) {
-                            // Registrar en log de acciones
-                            $db->insert("log_acciones", [
-                                'id_usuario' => $_SESSION['usuario_id'],
-                                'accion' => 'cambiar_estado_incidencia',
-                                'detalles' => "Estado de incidencia cambiado a: {$nuevo_estado}",
-                                'fecha' => date('Y-m-d H:i:s')
-                            ]);
-                            
-                            $_SESSION['success'] = "Estado de la incidencia actualizado exitosamente.";
-                        } else {
-                            $_SESSION['error'] = "Error al actualizar el estado de la incidencia.";
-                        }
-                    }
-                    break;
-                    
-                case 'agregar_notas':
-                    // Solo administradores pueden agregar notas administrativas
-                    if (!$es_admin) {
-                        $_SESSION['error'] = "No tienes permisos para agregar notas administrativas";
-                        redirect('gestionar.php');
-                        exit;
-                    }
-                    
-                    if (!empty($notas)) {
-                        $notas_actuales = $incidencia['notas_administrador'] ?? '';
-                        $notas_completas = $notas_actuales ? $notas_actuales . "\n\n" . date('Y-m-d H:i:s') . " - " . $_SESSION['usuario_nombre'] . ":\n" . $notas : $notas;
-                        
-                        $resultado = $db->update("bitacora_incidencias", [
-                            'notas_administrador' => $notas_completas
-                        ], "id_incidencia = ?", [$id_incidencia]);
-                        
-                        if ($resultado) {
-                            $_SESSION['success'] = "Notas agregadas exitosamente.";
-                        } else {
-                            $_SESSION['error'] = "Error al agregar las notas.";
-                        }
-                    }
-                    break;
-                    
-                case 'editar':
-                    // Los profesores pueden editar sus incidencias dentro del límite de tiempo
-                    if ($es_profesor) {
-                        $titulo = trim($_POST['titulo'] ?? '');
-                        $descripcion = trim($_POST['descripcion'] ?? '');
-                        $prioridad = $_POST['prioridad'] ?? 'media';
-                        
-                        if (!empty($titulo) && !empty($descripcion)) {
-                            $resultado = $db->update("bitacora_incidencias", [
-                                'titulo' => $titulo,
-                                'descripcion' => $descripcion,
-                                'prioridad' => $prioridad
-                            ], "id_incidencia = ?", [$id_incidencia]);
-                            
-                            if ($resultado) {
-                                $_SESSION['success'] = "Incidencia actualizada exitosamente.";
-                            } else {
-                                $_SESSION['error'] = "Error al actualizar la incidencia.";
-                            }
-                        } else {
-                            $_SESSION['error'] = "El título y la descripción son obligatorios.";
-                        }
-                    }
-                    break;
-                    
                 case 'eliminar':
-                    // Solo administradores pueden eliminar incidencias
+                    // Solo administradores pueden eliminar
                     if (!$es_admin) {
                         $_SESSION['error'] = "No tienes permisos para eliminar incidencias";
                         redirect('gestionar.php');
@@ -151,19 +66,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     
                     $resultado = $db->delete("bitacora_incidencias", "id_incidencia = ?", [$id_incidencia]);
-                    
                     if ($resultado) {
-                        // Registrar en log de acciones
-                        $db->insert("log_acciones", [
-                            'id_usuario' => $_SESSION['usuario_id'],
-                            'accion' => 'eliminar_incidencia',
-                            'detalles' => "Incidencia eliminada: {$incidencia['titulo']}",
-                            'fecha' => date('Y-m-d H:i:s')
-                        ]);
-                        
                         $_SESSION['success'] = "Incidencia eliminada exitosamente.";
                     } else {
                         $_SESSION['error'] = "Error al eliminar la incidencia.";
+                    }
+                    break;
+                    
+                case 'editar':
+                    $titulo = trim($_POST['titulo'] ?? '');
+                    $descripcion = trim($_POST['descripcion'] ?? '');
+                    $prioridad = $_POST['prioridad'] ?? '';
+                    
+                    if (!empty($titulo) && !empty($descripcion) && !empty($prioridad)) {
+                        $resultado = $db->update("bitacora_incidencias", [
+                            'titulo' => $titulo,
+                            'descripcion' => $descripcion,
+                            'prioridad' => $prioridad
+                        ], "id_incidencia = ?", [$id_incidencia]);
+                        
+                        if ($resultado) {
+                            $_SESSION['success'] = "Incidencia actualizada exitosamente.";
+                        } else {
+                            $_SESSION['error'] = "Error al actualizar la incidencia.";
+                        }
+                    } else {
+                        $_SESSION['error'] = "Todos los campos son obligatorios.";
                     }
                     break;
             }
@@ -174,135 +102,85 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-// Parámetros de paginación y filtros
-$pagina = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
-$por_pagina = 15;
-$offset = ($pagina - 1) * $por_pagina;
+// Configuración de paginación
+$elementos_por_pagina = 10;
+$pagina = isset($_GET['pagina']) ? max(1, intval($_GET['pagina'])) : 1;
+$offset = ($pagina - 1) * $elementos_por_pagina;
 
-$filtro_estado = $_GET['estado'] ?? '';
-$filtro_prioridad = $_GET['prioridad'] ?? '';
-$filtro_recurso = $_GET['recurso'] ?? '';
-$busqueda = $_GET['busqueda'] ?? '';
+// Filtros
+$filtro_estado = isset($_GET['estado']) ? $_GET['estado'] : '';
+$filtro_prioridad = isset($_GET['prioridad']) ? $_GET['prioridad'] : '';
+$filtro_recurso = isset($_GET['recurso']) ? $_GET['recurso'] : '';
+$busqueda = isset($_GET['busqueda']) ? trim($_GET['busqueda']) : '';
 
-// Construir la consulta base
-$where_conditions = ["1=1"];
+// Construir consulta SQL
+$sql = "SELECT bi.*, r.nombre as nombre_recurso, r.ubicacion, u.nombre, u.apellido
+        FROM bitacora_incidencias bi
+        LEFT JOIN recursos r ON bi.id_recurso = r.id_recurso
+        LEFT JOIN usuarios u ON bi.id_usuario = u.id_usuario";
+
+$condiciones = [];
 $params = [];
 
-// Los profesores solo ven sus propias incidencias
-if ($es_profesor) {
-    $where_conditions[] = "bi.id_usuario = ?";
-    $params[] = $_SESSION['usuario_id'];
-}
-
+// Aplicar filtros
 if (!empty($filtro_estado)) {
-    $where_conditions[] = "bi.estado = ?";
+    $condiciones[] = "bi.estado = ?";
     $params[] = $filtro_estado;
 }
 
 if (!empty($filtro_prioridad)) {
-    $where_conditions[] = "bi.prioridad = ?";
+    $condiciones[] = "bi.prioridad = ?";
     $params[] = $filtro_prioridad;
 }
 
 if (!empty($filtro_recurso)) {
-    $where_conditions[] = "rc.id_recurso = ?";
+    $condiciones[] = "bi.id_recurso = ?";
     $params[] = $filtro_recurso;
 }
 
 if (!empty($busqueda)) {
-    $where_conditions[] = "(bi.titulo LIKE ? OR bi.descripcion LIKE ? OR rc.nombre LIKE ? OR u.nombre LIKE ? OR u.apellido LIKE ?)";
-    $search_term = "%{$busqueda}%";
-    $params[] = $search_term;
-    $params[] = $search_term;
-    $params[] = $search_term;
-    $params[] = $search_term;
-    $params[] = $search_term;
+    $condiciones[] = "(bi.titulo LIKE ? OR bi.descripcion LIKE ? OR r.nombre LIKE ?)";
+    $params[] = "%$busqueda%";
+    $params[] = "%$busqueda%";
+    $params[] = "%$busqueda%";
 }
 
-$where_clause = implode(" AND ", $where_conditions);
-
-// Obtener total de incidencias para paginación
-$total_query = "SELECT COUNT(*) as total FROM bitacora_incidencias bi 
-                JOIN recursos rc ON bi.id_recurso = rc.id_recurso 
-                JOIN usuarios u ON bi.id_usuario = u.id_usuario
-                WHERE {$where_clause}";
-$total_result = $db->getRow($total_query, $params);
-
-// Validar que el resultado sea válido
-if ($total_result === false) {
-    $total_incidencias = 0;
-    $total_paginas = 1;
-} else {
-$total_incidencias = $total_result['total'];
-$total_paginas = ceil($total_incidencias / $por_pagina);
+// Si es profesor, solo mostrar sus incidencias
+if ($es_profesor) {
+    $condiciones[] = "bi.id_usuario = ?";
+    $params[] = $_SESSION['usuario_id'];
 }
 
-// Obtener incidencias
-$incidencias_query = "
-    SELECT bi.*, rc.nombre as nombre_recurso, rc.ubicacion,
-           t.nombre as tipo_recurso, r.fecha_inicio, r.fecha_fin,
-           u.nombre as nombre_usuario, u.apellido as apellido_usuario, u.email as email_usuario,
-           admin.nombre as nombre_admin, admin.apellido as apellido_admin
-    FROM bitacora_incidencias bi
-    JOIN recursos rc ON bi.id_recurso = rc.id_recurso
-    JOIN tipos_recursos t ON rc.id_tipo = t.id_tipo
-    JOIN reservas r ON bi.id_reserva = r.id_reserva
-    JOIN usuarios u ON bi.id_usuario = u.id_usuario
-    LEFT JOIN usuarios admin ON bi.id_administrador_resuelve = admin.id_usuario
-    WHERE {$where_clause}
-    ORDER BY 
-        CASE bi.prioridad 
-            WHEN 'critica' THEN 1 
-            WHEN 'alta' THEN 2 
-            WHEN 'media' THEN 3 
-            WHEN 'baja' THEN 4 
-        END,
-        bi.fecha_reporte DESC
-    LIMIT {$por_pagina} OFFSET {$offset}
-";
-
-$incidencias = $db->getRows($incidencias_query, $params);
-
-// Validar que las incidencias sean un array válido
-if ($incidencias === false) {
-    $incidencias = [];
+if (!empty($condiciones)) {
+    $sql .= " WHERE " . implode(' AND ', $condiciones);
 }
 
-// Obtener recursos para el filtro
-$recursos = $db->getRows("SELECT id_recurso, nombre, ubicacion FROM recursos ORDER BY nombre");
+$sql .= " ORDER BY bi.fecha_reporte DESC";
 
-// Validar que los recursos sean un array válido
-if ($recursos === false) {
-    $recursos = [];
-}
+// Obtener total de registros para paginación
+$sql_count = str_replace("SELECT bi.*, r.nombre as nombre_recurso, r.ubicacion, u.nombre, u.apellido", "SELECT COUNT(*)", $sql);
+$total_registros = $db->getRow($sql_count, $params)['COUNT(*)'] ?? 0;
+$total_paginas = ceil($total_registros / $elementos_por_pagina);
 
-// Obtener estadísticas generales
-$stats_query = "
-    SELECT 
-        COUNT(*) as total_incidencias,
-        SUM(CASE WHEN estado = 'reportada' THEN 1 ELSE 0 END) as pendientes,
-        SUM(CASE WHEN estado = 'en_revision' THEN 1 ELSE 0 END) as en_revision,
-        SUM(CASE WHEN estado = 'en_proceso' THEN 1 ELSE 0 END) as en_proceso,
-        SUM(CASE WHEN estado = 'resuelta' THEN 1 ELSE 0 END) as resueltas,
-        SUM(CASE WHEN estado = 'cerrada' THEN 1 ELSE 0 END) as cerradas,
-        SUM(CASE WHEN prioridad = 'critica' THEN 1 ELSE 0 END) as criticas,
-        SUM(CASE WHEN prioridad = 'alta' THEN 1 ELSE 0 END) as altas
-    FROM bitacora_incidencias
-";
-$estadisticas = $db->getRow($stats_query);
+// Obtener incidencias con paginación
+$sql .= " LIMIT $elementos_por_pagina OFFSET $offset";
+$incidencias = $db->getRows($sql, $params);
 
-// Validar que las estadísticas sean un array válido
-if ($estadisticas === false) {
-    $estadisticas = [
-        'total_incidencias' => 0,
-        'pendientes' => 0,
-        'en_revision' => 0,
-        'en_proceso' => 0,
-        'resueltas' => 0,
-        'cerradas' => 0,
-        'criticas' => 0,
-        'altas' => 0
-    ];
+// Obtener recursos para filtro
+$recursos = $db->getRows("SELECT id_recurso, nombre FROM recursos ORDER BY nombre");
+
+// Estados y prioridades para filtros
+$estados = ['reportada', 'en_revision', 'en_proceso', 'resuelta', 'cerrada'];
+$prioridades = ['baja', 'media', 'alta', 'critica'];
+
+// Verificar si hay mensaje de éxito o error
+$mensaje = '';
+if (isset($_SESSION['success'])) {
+    $mensaje = '<div class="alert alert-success">' . $_SESSION['success'] . '</div>';
+    unset($_SESSION['success']);
+} elseif (isset($_SESSION['error'])) {
+    $mensaje = '<div class="alert alert-error">' . $_SESSION['error'] . '</div>';
+    unset($_SESSION['error']);
 }
 ?>
 <!DOCTYPE html>
@@ -313,70 +191,88 @@ if ($estadisticas === false) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestionar Incidencias - Sistema de Gestión de Recursos</title>
     <link rel="stylesheet" href="../assets/css/styles.css">
+    <link rel="stylesheet" href="../assets/css/responsive-tables.css">
     <style>
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .stat-card {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            text-align: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .stat-value {
-            font-size: 24px;
-            font-weight: bold;
-            color: #007bff;
-        }
-        
-        .stat-label {
-            font-size: 12px;
-            color: #666;
-            text-transform: uppercase;
-            margin-top: 5px;
-        }
-        
-        .stat-card.criticas .stat-value { color: #dc3545; }
-        .stat-card.altas .stat-value { color: #fd7e14; }
-        .stat-card.pendientes .stat-value { color: #ffc107; }
-        
-        .filters {
-            background: white;
+        .filtros {
+            background: #f8f9fa;
             padding: 20px;
             border-radius: 8px;
             margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         
-        .filters form {
+        .filtros-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
-            align-items: end;
+            margin-bottom: 15px;
         }
         
-        .filter-group label {
-            display: block;
-            margin-bottom: 5px;
+        .filtro-grupo {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .filtro-grupo label {
             font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        
+        .filtro-grupo select,
+        .filtro-grupo input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
             font-size: 14px;
         }
         
-        .filter-group input,
-        .filter-group select {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+        .filtros-acciones {
+            display: flex;
+            gap: 10px;
+            align-items: center;
         }
         
-        .estado-badge {
+        .btn-filtrar {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-limpiar {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .incidencias-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .incidencias-table th,
+        .incidencias-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .incidencias-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        
+        .badge {
             padding: 4px 8px;
             border-radius: 12px;
             font-size: 12px;
@@ -384,50 +280,82 @@ if ($estadisticas === false) {
             text-transform: uppercase;
         }
         
-        .estado-reportada { background: #e3f2fd; color: #1976d2; }
-        .estado-en_revision { background: #fff3e0; color: #f57c00; }
-        .estado-en_proceso { background: #e8f5e8; color: #388e3c; }
-        .estado-resuelta { background: #e8f5e8; color: #388e3c; }
-        .estado-cerrada { background: #f5f5f5; color: #616161; }
-        
-        .prioridad-baja { color: #28a745; }
-        .prioridad-media { color: #ffc107; }
-        .prioridad-alta { color: #fd7e14; }
-        .prioridad-critica { color: #dc3545; }
-        
-        .prioridad-badge {
-            padding: 2px 6px;
-            border-radius: 8px;
-            font-size: 10px;
-            font-weight: bold;
-            text-transform: uppercase;
+        .badge-reportada {
+            background-color: #ffc107;
+            color: black;
         }
         
-        .prioridad-badge.critica { background: #dc3545; color: white; }
-        .prioridad-badge.alta { background: #fd7e14; color: white; }
-        .prioridad-badge.media { background: #ffc107; color: #212529; }
-        .prioridad-badge.baja { background: #28a745; color: white; }
-        
-        .acciones-rapidas {
-            display: flex;
-            gap: 5px;
-            flex-wrap: wrap;
+        .badge-en_revision {
+            background-color: #17a2b8;
+            color: white;
         }
         
-        .btn-estado {
+        .badge-en_proceso {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .badge-resuelta {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .badge-cerrada {
+            background-color: #6c757d;
+            color: white;
+        }
+        
+        .badge-baja {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .badge-media {
+            background-color: #ffc107;
+            color: black;
+        }
+        
+        .badge-alta {
+            background-color: #fd7e14;
+            color: white;
+        }
+        
+        .badge-critica {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        .btn-small {
             padding: 4px 8px;
-            font-size: 11px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
+            font-size: 12px;
+            margin: 2px;
         }
         
-        .btn-estado.revision { background: #ffc107; color: #212529; }
-        .btn-estado.proceso { background: #17a2b8; color: white; }
-        .btn-estado.resuelta { background: #28a745; color: white; }
-        .btn-estado.cerrada { background: #6c757d; color: white; }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .pagination a,
+        .pagination span {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            text-decoration: none;
+            color: #007bff;
+            border-radius: 4px;
+        }
+        
+        .pagination .current {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        
+        .pagination a:hover {
+            background: #f8f9fa;
+        }
         
         .modal {
             display: none;
@@ -442,10 +370,10 @@ if ($estadisticas === false) {
         
         .modal-content {
             background-color: white;
-            margin: 10% auto;
+            margin: 5% auto;
             padding: 20px;
             border-radius: 8px;
-            width: 90%;
+            width: 80%;
             max-width: 500px;
         }
         
@@ -476,41 +404,15 @@ if ($estadisticas === false) {
         .form-group select,
         .form-group textarea {
             width: 100%;
-            padding: 8px;
+            padding: 8px 12px;
             border: 1px solid #ddd;
             border-radius: 4px;
+            font-size: 14px;
         }
         
         .form-group textarea {
             height: 100px;
             resize: vertical;
-        }
-        
-        .pagination {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-top: 20px;
-            gap: 10px;
-        }
-        
-        .pagination a,
-        .pagination span {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            text-decoration: none;
-            color: #007bff;
-            border-radius: 4px;
-        }
-        
-        .pagination .current {
-            background: #007bff;
-            color: white;
-            border-color: #007bff;
-        }
-        
-        .pagination a:hover {
-            background: #f8f9fa;
         }
     </style>
 </head>
@@ -535,196 +437,122 @@ if ($estadisticas === false) {
                     <a href="../logout.php" class="logout-btn">Cerrar sesión</a>
                 </div>
             </div>
-            
-            <!-- Botón para nueva incidencia -->
-            <div style="margin-bottom: 20px; text-align: right;">
-                <a href="reportar.php" class="btn btn-primary">+ Nueva Incidencia</a>
-            </div>
 
-            <?php if (isset($_SESSION['success'])): ?>
-                <div class="alert alert-success">
-                    <?php echo $_SESSION['success'];
-                    unset($_SESSION['success']); ?>
-                </div>
-            <?php endif; ?>
-
-            <?php if (isset($_SESSION['error'])): ?>
-                <div class="alert alert-error">
-                    <?php echo $_SESSION['error'];
-                    unset($_SESSION['error']); ?>
-                </div>
-            <?php endif; ?>
-
-            <!-- Estadísticas -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value"><?php echo $estadisticas['total_incidencias']; ?></div>
-                    <div class="stat-label">Total</div>
-                </div>
-                <div class="stat-card pendientes">
-                    <div class="stat-value"><?php echo $estadisticas['pendientes']; ?></div>
-                    <div class="stat-label">Pendientes</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value"><?php echo $estadisticas['en_revision']; ?></div>
-                    <div class="stat-label">En Revisión</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value"><?php echo $estadisticas['en_proceso']; ?></div>
-                    <div class="stat-label">En Proceso</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value"><?php echo $estadisticas['resueltas']; ?></div>
-                    <div class="stat-label">Resueltas</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value"><?php echo $estadisticas['cerradas']; ?></div>
-                    <div class="stat-label">Cerradas</div>
-                </div>
-                <div class="stat-card criticas">
-                    <div class="stat-value"><?php echo $estadisticas['criticas']; ?></div>
-                    <div class="stat-label">Críticas</div>
-                </div>
-                <div class="stat-card altas">
-                    <div class="stat-value"><?php echo $estadisticas['altas']; ?></div>
-                    <div class="stat-label">Altas</div>
-                </div>
-            </div>
+            <?php echo $mensaje; ?>
 
             <!-- Filtros -->
-            <div class="filters">
+            <div class="filtros">
+                <h3>Filtros de Búsqueda</h3>
                 <form method="GET" action="">
-                    <div class="filter-group">
-                        <label for="busqueda">Buscar:</label>
-                        <input type="text" name="busqueda" id="busqueda" 
-                               placeholder="Título, descripción, recurso o usuario..." 
-                               value="<?php echo htmlspecialchars($busqueda); ?>">
+                    <div class="filtros-grid">
+                        <div class="filtro-grupo">
+                            <label for="busqueda">Buscar:</label>
+                            <input type="text" id="busqueda" name="busqueda" value="<?php echo htmlspecialchars($busqueda); ?>" placeholder="Título, descripción, recurso...">
+                        </div>
+                        
+                        <div class="filtro-grupo">
+                            <label for="estado">Estado:</label>
+                            <select id="estado" name="estado">
+                                <option value="">Todos los estados</option>
+                                <?php foreach ($estados as $est): ?>
+                                    <option value="<?php echo $est; ?>" <?php echo $filtro_estado == $est ? 'selected' : ''; ?>>
+                                        <?php echo ucfirst(str_replace('_', ' ', $est)); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        
+                        <div class="filtro-grupo">
+                            <label for="prioridad">Prioridad:</label>
+                            <select id="prioridad" name="prioridad">
+                                <option value="">Todas las prioridades</option>
+                                <?php foreach ($prioridades as $pri): ?>
+                                    <option value="<?php echo $pri; ?>" <?php echo $filtro_prioridad == $pri ? 'selected' : ''; ?>>
+                                        <?php echo ucfirst($pri); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        
+                        <div class="filtro-grupo">
+                            <label for="recurso">Recurso:</label>
+                            <select id="recurso" name="recurso">
+                                <option value="">Todos los recursos</option>
+                                <?php foreach ($recursos as $rec): ?>
+                                    <option value="<?php echo $rec['id_recurso']; ?>" <?php echo $filtro_recurso == $rec['id_recurso'] ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($rec['nombre']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
                     </div>
                     
-                    <div class="filter-group">
-                        <label for="estado">Estado:</label>
-                        <select name="estado" id="estado">
-                            <option value="">Todos los estados</option>
-                            <option value="reportada" <?php echo $filtro_estado === 'reportada' ? 'selected' : ''; ?>>Reportada</option>
-                            <option value="en_revision" <?php echo $filtro_estado === 'en_revision' ? 'selected' : ''; ?>>En Revisión</option>
-                            <option value="en_proceso" <?php echo $filtro_estado === 'en_proceso' ? 'selected' : ''; ?>>En Proceso</option>
-                            <option value="resuelta" <?php echo $filtro_estado === 'resuelta' ? 'selected' : ''; ?>>Resuelta</option>
-                            <option value="cerrada" <?php echo $filtro_estado === 'cerrada' ? 'selected' : ''; ?>>Cerrada</option>
-                        </select>
-                    </div>
-                    
-                    <div class="filter-group">
-                        <label for="prioridad">Prioridad:</label>
-                        <select name="prioridad" id="prioridad">
-                            <option value="">Todas las prioridades</option>
-                            <option value="baja" <?php echo $filtro_prioridad === 'baja' ? 'selected' : ''; ?>>Baja</option>
-                            <option value="media" <?php echo $filtro_prioridad === 'media' ? 'selected' : ''; ?>>Media</option>
-                            <option value="alta" <?php echo $filtro_prioridad === 'alta' ? 'selected' : ''; ?>>Alta</option>
-                            <option value="critica" <?php echo $filtro_prioridad === 'critica' ? 'selected' : ''; ?>>Crítica</option>
-                        </select>
-                    </div>
-                    
-                    <div class="filter-group">
-                        <label for="recurso">Recurso:</label>
-                        <select name="recurso" id="recurso">
-                            <option value="">Todos los recursos</option>
-                            <?php foreach ($recursos as $recurso): ?>
-                                <option value="<?php echo $recurso['id_recurso']; ?>" <?php echo $filtro_recurso == $recurso['id_recurso'] ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($recurso['nombre']); ?> - <?php echo htmlspecialchars($recurso['ubicacion']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    
-                    <div class="filter-group">
-                        <button type="submit" class="btn btn-primary">Filtrar</button>
-                        <a href="gestionar.php" class="btn btn-secondary">Limpiar</a>
+                    <div class="filtros-acciones">
+                        <button type="submit" class="btn-filtrar">Filtrar</button>
+                        <a href="gestionar.php" class="btn-limpiar">Limpiar Filtros</a>
+                        <a href="reportar.php" class="btn-filtrar">Reportar Nueva Incidencia</a>
                     </div>
                 </form>
             </div>
 
-            <!-- Lista de Incidencias -->
+            <!-- Tabla de Incidencias -->
             <div class="card">
-                <div class="card-title">
-                    Incidencias del Sistema
-                    <span style="float: right; font-size: 14px; color: #666;">
-                        Total: <?php echo $total_incidencias; ?> incidencias
-                    </span>
-                </div>
-
+                <div class="card-title">Listado de Incidencias</div>
                 <?php if (empty($incidencias)): ?>
-                    <div class="empty-state">
-                        <div class="icon">📝</div>
-                        <h3>No se encontraron incidencias</h3>
-                        <p>No hay incidencias que coincidan con los filtros aplicados.</p>
-                    </div>
+                    <p>No se encontraron incidencias con los filtros aplicados.</p>
                 <?php else: ?>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Prioridad</th>
-                                <th>Recurso</th>
-                                <th>Título</th>
-                                <th>Usuario</th>
-                                <th>Estado</th>
-                                <th>Fecha Reporte</th>
-                                <th>Fecha Reserva</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($incidencias as $incidencia): ?>
+                    <div class="table-responsive">
+                        <table class="incidencias-table">
+                            <thead>
                                 <tr>
-                                    <td>
-                                        <span class="prioridad-badge <?php echo $incidencia['prioridad']; ?>">
-                                            <?php echo ucfirst($incidencia['prioridad']); ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <strong><?php echo htmlspecialchars($incidencia['nombre_recurso']); ?></strong><br>
-                                        <small><?php echo htmlspecialchars($incidencia['tipo_recurso']); ?> - <?php echo htmlspecialchars($incidencia['ubicacion']); ?></small>
-                                    </td>
-                                    <td><?php echo htmlspecialchars($incidencia['titulo']); ?></td>
-                                    <td>
-                                        <?php echo htmlspecialchars($incidencia['nombre_usuario'] . ' ' . $incidencia['apellido_usuario']); ?><br>
-                                        <small><?php echo htmlspecialchars($incidencia['email_usuario']); ?></small>
-                                    </td>
-                                    <td>
-                                        <span class="estado-badge estado-<?php echo $incidencia['estado']; ?>">
-                                            <?php echo ucfirst(str_replace('_', ' ', $incidencia['estado'])); ?>
-                                        </span>
-                                    </td>
-                                    <td><?php echo format_date($incidencia['fecha_reporte'], true); ?></td>
-                                    <td>
-                                        <?php echo format_date($incidencia['fecha_inicio'], true); ?><br>
-                                        <small>a <?php echo format_date($incidencia['fecha_fin'], true); ?></small>
-                                    </td>
-                                    <td>
-                                        <div class="acciones-rapidas">
-                                            <a href="ver_incidencia.php?id=<?php echo $incidencia['id_incidencia']; ?>" 
-                                               class="btn btn-small btn-primary">Ver</a>
-                                            
+                                    <th>Título</th>
+                                    <th>Recurso</th>
+                                    <th>Reportado por</th>
+                                    <th>Estado</th>
+                                    <th>Prioridad</th>
+                                    <th>Fecha Reporte</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($incidencias as $incidencia): ?>
+                                    <tr>
+                                        <td>
+                                            <strong><?php echo htmlspecialchars($incidencia['titulo']); ?></strong>
+                                            <br><small style="color: #6c757d;"><?php echo htmlspecialchars(substr($incidencia['descripcion'], 0, 50)) . (strlen($incidencia['descripcion']) > 50 ? '...' : ''); ?></small>
+                                        </td>
+                                        <td><?php echo htmlspecialchars($incidencia['nombre_recurso'] ?: 'No especificado'); ?></td>
+                                        <td><?php echo htmlspecialchars($incidencia['nombre'] . ' ' . $incidencia['apellido']); ?></td>
+                                        <td>
+                                            <?php
+                                            $estado = $incidencia['estado'];
+                                            $badgeClass = 'badge-' . $estado;
+                                            echo '<span class="badge ' . $badgeClass . '">' . ucfirst(str_replace('_', ' ', $estado)) . '</span>';
+                                            ?>
+                                        </td>
+                                        <td>
+                                            <?php
+                                            $prioridad = $incidencia['prioridad'];
+                                            $badgeClass = 'badge-' . $prioridad;
+                                            echo '<span class="badge ' . $badgeClass . '">' . ucfirst($prioridad) . '</span>';
+                                            ?>
+                                        </td>
+                                        <td><?php echo format_date($incidencia['fecha_reporte'], true); ?></td>
+                                        <td>
+                                            <a href="ver.php?id=<?php echo $incidencia['id_incidencia']; ?>" class="btn btn-small btn-primary">Ver</a>
                                             <?php if ($es_admin): ?>
-                                                <!-- Acciones solo para administradores -->
-                                            <button onclick="abrirModalEstado(<?php echo $incidencia['id_incidencia']; ?>, '<?php echo $incidencia['estado']; ?>')" 
-                                                    class="btn btn-small btn-secondary">Estado</button>
-                                            <button onclick="abrirModalNotas(<?php echo $incidencia['id_incidencia']; ?>)" 
-                                                    class="btn btn-small btn-info">Notas</button>
-                                                <button onclick="abrirModalEditar(<?php echo $incidencia['id_incidencia']; ?>, '<?php echo htmlspecialchars($incidencia['titulo']); ?>', '<?php echo htmlspecialchars($incidencia['descripcion']); ?>', '<?php echo $incidencia['prioridad']; ?>')" 
-                                                        class="btn btn-small btn-warning">Editar</button>
                                                 <button onclick="confirmarEliminar(<?php echo $incidencia['id_incidencia']; ?>, '<?php echo htmlspecialchars($incidencia['titulo']); ?>')" 
                                                         class="btn btn-small btn-danger">Eliminar</button>
                                             <?php elseif ($es_profesor && $incidencia['id_usuario'] == $_SESSION['usuario_id'] && profesor_puede_editar_incidencia($incidencia['id_incidencia'])): ?>
-                                                <!-- Acciones para profesores (solo sus propias incidencias y dentro del límite de tiempo) -->
                                                 <button onclick="abrirModalEditar(<?php echo $incidencia['id_incidencia']; ?>, '<?php echo htmlspecialchars($incidencia['titulo']); ?>', '<?php echo htmlspecialchars($incidencia['descripcion']); ?>', '<?php echo $incidencia['prioridad']; ?>')" 
                                                         class="btn btn-small btn-warning">Editar</button>
                                             <?php endif; ?>
-                                        </div>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
 
                     <!-- Paginación -->
                     <?php if ($total_paginas > 1): ?>
@@ -748,65 +576,6 @@ if ($estadisticas === false) {
                     <?php endif; ?>
                 <?php endif; ?>
             </div>
-        </div>
-    </div>
-
-    <!-- Modal para cambiar estado -->
-    <div id="modalEstado" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Cambiar Estado de Incidencia</h3>
-                <span class="close" onclick="cerrarModal('modalEstado')">&times;</span>
-            </div>
-            <form method="POST" action="">
-                <input type="hidden" name="accion" value="cambiar_estado">
-                <input type="hidden" name="id_incidencia" id="modal_id_incidencia">
-                
-                <div class="form-group">
-                    <label for="nuevo_estado">Nuevo Estado:</label>
-                    <select name="nuevo_estado" id="nuevo_estado" required>
-                        <option value="reportada">Reportada</option>
-                        <option value="en_revision">En Revisión</option>
-                        <option value="en_proceso">En Proceso</option>
-                        <option value="resuelta">Resuelta</option>
-                        <option value="cerrada">Cerrada</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="notas">Notas (opcional):</label>
-                    <textarea name="notas" id="notas" placeholder="Agregar comentarios sobre el cambio de estado..."></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <button type="submit" class="btn btn-primary">Actualizar Estado</button>
-                    <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalEstado')">Cancelar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Modal para agregar notas -->
-    <div id="modalNotas" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Agregar Notas</h3>
-                <span class="close" onclick="cerrarModal('modalNotas')">&times;</span>
-            </div>
-            <form method="POST" action="">
-                <input type="hidden" name="accion" value="agregar_notas">
-                <input type="hidden" name="id_incidencia" id="modal_notas_id_incidencia">
-                
-                <div class="form-group">
-                    <label for="notas_texto">Notas:</label>
-                    <textarea name="notas" id="notas_texto" placeholder="Agregar comentarios o instrucciones..." required></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <button type="submit" class="btn btn-primary">Agregar Notas</button>
-                    <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalNotas')">Cancelar</button>
-                </div>
-            </form>
         </div>
     </div>
 
@@ -851,17 +620,6 @@ if ($estadisticas === false) {
 
     <script src="../assets/js/main.js"></script>
     <script>
-        function abrirModalEstado(idIncidencia, estadoActual) {
-            document.getElementById('modal_id_incidencia').value = idIncidencia;
-            document.getElementById('nuevo_estado').value = estadoActual;
-            document.getElementById('modalEstado').style.display = 'block';
-        }
-        
-        function abrirModalNotas(idIncidencia) {
-            document.getElementById('modal_notas_id_incidencia').value = idIncidencia;
-            document.getElementById('modalNotas').style.display = 'block';
-        }
-        
         function abrirModalEditar(idIncidencia, titulo, descripcion, prioridad) {
             document.getElementById('modal_editar_id_incidencia').value = idIncidencia;
             document.getElementById('titulo_editar').value = titulo;
@@ -907,206 +665,4 @@ if ($estadisticas === false) {
     </script>
 </body>
 
-</html> 
-                                            <?php if ($es_admin): ?>
-                                                <!-- Acciones solo para administradores -->
-                                                <button onclick="abrirModalEstado(<?php echo $incidencia['id_incidencia']; ?>, '<?php echo $incidencia['estado']; ?>')" 
-                                                        class="btn btn-small btn-secondary">Estado</button>
-                                                <button onclick="abrirModalNotas(<?php echo $incidencia['id_incidencia']; ?>)" 
-                                                        class="btn btn-small btn-info">Notas</button>
-                                                <button onclick="abrirModalEditar(<?php echo $incidencia['id_incidencia']; ?>, '<?php echo htmlspecialchars($incidencia['titulo']); ?>', '<?php echo htmlspecialchars($incidencia['descripcion']); ?>', '<?php echo $incidencia['prioridad']; ?>')" 
-                                                        class="btn btn-small btn-warning">Editar</button>
-                                                <button onclick="confirmarEliminar(<?php echo $incidencia['id_incidencia']; ?>, '<?php echo htmlspecialchars($incidencia['titulo']); ?>')" 
-                                                        class="btn btn-small btn-danger">Eliminar</button>
-                                            <?php elseif ($es_profesor && $incidencia['id_usuario'] == $_SESSION['usuario_id'] && profesor_puede_editar_incidencia($incidencia['id_incidencia'])): ?>
-                                                <!-- Acciones para profesores (solo sus propias incidencias y dentro del límite de tiempo) -->
-                                                <button onclick="abrirModalEditar(<?php echo $incidencia['id_incidencia']; ?>, '<?php echo htmlspecialchars($incidencia['titulo']); ?>', '<?php echo htmlspecialchars($incidencia['descripcion']); ?>', '<?php echo $incidencia['prioridad']; ?>')" 
-                                                        class="btn btn-small btn-warning">Editar</button>
-                                            <?php endif; ?>
-                                        </div>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-
-                    <!-- Paginación -->
-                    <?php if ($total_paginas > 1): ?>
-                        <div class="pagination">
-                            <?php if ($pagina > 1): ?>
-                                <a href="?pagina=<?php echo $pagina - 1; ?>&estado=<?php echo urlencode($filtro_estado); ?>&prioridad=<?php echo urlencode($filtro_prioridad); ?>&recurso=<?php echo urlencode($filtro_recurso); ?>&busqueda=<?php echo urlencode($busqueda); ?>">← Anterior</a>
-                            <?php endif; ?>
-                            
-                            <?php for ($i = 1; $i <= $total_paginas; $i++): ?>
-                                <?php if ($i == $pagina): ?>
-                                    <span class="current"><?php echo $i; ?></span>
-                                <?php else: ?>
-                                    <a href="?pagina=<?php echo $i; ?>&estado=<?php echo urlencode($filtro_estado); ?>&prioridad=<?php echo urlencode($filtro_prioridad); ?>&recurso=<?php echo urlencode($filtro_recurso); ?>&busqueda=<?php echo urlencode($busqueda); ?>"><?php echo $i; ?></a>
-                                <?php endif; ?>
-                            <?php endfor; ?>
-                            
-                            <?php if ($pagina < $total_paginas): ?>
-                                <a href="?pagina=<?php echo $pagina + 1; ?>&estado=<?php echo urlencode($filtro_estado); ?>&prioridad=<?php echo urlencode($filtro_prioridad); ?>&recurso=<?php echo urlencode($filtro_recurso); ?>&busqueda=<?php echo urlencode($busqueda); ?>">Siguiente →</a>
-                            <?php endif; ?>
-                        </div>
-                    <?php endif; ?>
-                <?php endif; ?>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal para cambiar estado -->
-    <div id="modalEstado" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Cambiar Estado de Incidencia</h3>
-                <span class="close" onclick="cerrarModal('modalEstado')">&times;</span>
-            </div>
-            <form method="POST" action="">
-                <input type="hidden" name="accion" value="cambiar_estado">
-                <input type="hidden" name="id_incidencia" id="modal_id_incidencia">
-                
-                <div class="form-group">
-                    <label for="nuevo_estado">Nuevo Estado:</label>
-                    <select name="nuevo_estado" id="nuevo_estado" required>
-                        <option value="reportada">Reportada</option>
-                        <option value="en_revision">En Revisión</option>
-                        <option value="en_proceso">En Proceso</option>
-                        <option value="resuelta">Resuelta</option>
-                        <option value="cerrada">Cerrada</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="notas">Notas (opcional):</label>
-                    <textarea name="notas" id="notas" placeholder="Agregar comentarios sobre el cambio de estado..."></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <button type="submit" class="btn btn-primary">Actualizar Estado</button>
-                    <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalEstado')">Cancelar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Modal para agregar notas -->
-    <div id="modalNotas" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Agregar Notas</h3>
-                <span class="close" onclick="cerrarModal('modalNotas')">&times;</span>
-            </div>
-            <form method="POST" action="">
-                <input type="hidden" name="accion" value="agregar_notas">
-                <input type="hidden" name="id_incidencia" id="modal_notas_id_incidencia">
-                
-                <div class="form-group">
-                    <label for="notas_texto">Notas:</label>
-                    <textarea name="notas" id="notas_texto" placeholder="Agregar comentarios o instrucciones..." required></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <button type="submit" class="btn btn-primary">Agregar Notas</button>
-                    <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalNotas')">Cancelar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Modal para editar incidencia -->
-    <div id="modalEditar" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Editar Incidencia</h3>
-                <span class="close" onclick="cerrarModal('modalEditar')">&times;</span>
-            </div>
-            <form method="POST" action="">
-                <input type="hidden" name="accion" value="editar">
-                <input type="hidden" name="id_incidencia" id="modal_editar_id_incidencia">
-                
-                <div class="form-group">
-                    <label for="titulo_editar">Título:</label>
-                    <input type="text" name="titulo" id="titulo_editar" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="descripcion_editar">Descripción:</label>
-                    <textarea name="descripcion" id="descripcion_editar" required></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label for="prioridad_editar">Prioridad:</label>
-                    <select name="prioridad" id="prioridad_editar" required>
-                        <option value="baja">Baja</option>
-                        <option value="media">Media</option>
-                        <option value="alta">Alta</option>
-                        <option value="critica">Crítica</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <button type="submit" class="btn btn-primary">Actualizar Incidencia</button>
-                    <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalEditar')">Cancelar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <script src="../assets/js/main.js"></script>
-    <script>
-        function abrirModalEstado(idIncidencia, estadoActual) {
-            document.getElementById('modal_id_incidencia').value = idIncidencia;
-            document.getElementById('nuevo_estado').value = estadoActual;
-            document.getElementById('modalEstado').style.display = 'block';
-        }
-        
-        function abrirModalNotas(idIncidencia) {
-            document.getElementById('modal_notas_id_incidencia').value = idIncidencia;
-            document.getElementById('modalNotas').style.display = 'block';
-        }
-        
-        function abrirModalEditar(idIncidencia, titulo, descripcion, prioridad) {
-            document.getElementById('modal_editar_id_incidencia').value = idIncidencia;
-            document.getElementById('titulo_editar').value = titulo;
-            document.getElementById('descripcion_editar').value = descripcion;
-            document.getElementById('prioridad_editar').value = prioridad;
-            document.getElementById('modalEditar').style.display = 'block';
-        }
-        
-        function confirmarEliminar(idIncidencia, titulo) {
-            if (confirm('¿Estás seguro de que deseas eliminar la incidencia "' + titulo + '"? Esta acción no se puede deshacer.')) {
-                // Crear un formulario temporal para enviar la acción de eliminar
-                var form = document.createElement('form');
-                form.method = 'POST';
-                form.action = '';
-                
-                var accionInput = document.createElement('input');
-                accionInput.type = 'hidden';
-                accionInput.name = 'accion';
-                accionInput.value = 'eliminar';
-                form.appendChild(accionInput);
-                
-                var idInput = document.createElement('input');
-                idInput.type = 'hidden';
-                idInput.name = 'id_incidencia';
-                idInput.value = idIncidencia;
-                form.appendChild(idInput);
-                
-                document.body.appendChild(form);
-                form.submit();
-            }
-        }
-        
-        function cerrarModal(modalId) {
-            document.getElementById(modalId).style.display = 'none';
-        }
-        
-        // Cerrar modal al hacer clic fuera de él
-        window.onclick = function(event) {
-            if (event.target.classList.contains('modal')) {
-                event.target.style.display = 'none';
-            }
-        }
-    </script>
-</body>
+</html>
