@@ -11,6 +11,7 @@ session_start();
 require_once '../../config/config.php';
 require_once '../../config/database.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/permissions.php';
 
 // Verificar que el usuario esté logueado y sea profesor
 require_login();
@@ -92,6 +93,42 @@ foreach ($reservas_por_estado as $estado) {
     }
 }
 
+// Obtener incidencias recientes del profesor
+$incidencias_recientes = $db->getRows(
+    "SELECT id_incidencia, titulo, estado, fecha_reporte
+     FROM bitacora_incidencias 
+     WHERE id_usuario = ?
+     ORDER BY fecha_reporte DESC
+     LIMIT 5",
+    [$_SESSION['usuario_id']]
+);
+
+// Contar incidencias por estado
+$incidencias_por_estado = $db->getRows(
+    "SELECT estado, COUNT(*) as total FROM bitacora_incidencias WHERE id_usuario = ? GROUP BY estado",
+    [$_SESSION['usuario_id']]
+);
+
+$incidencias_reportadas = 0;
+$incidencias_en_revision = 0;
+$incidencias_resueltas = 0;
+
+foreach ($incidencias_por_estado as $estado) {
+    switch ($estado['estado']) {
+        case 'reportada':
+            $incidencias_reportadas = $estado['total'];
+            break;
+        case 'en_revision':
+        case 'en_proceso':
+            $incidencias_en_revision = $estado['total'];
+            break;
+        case 'resuelta':
+        case 'cerrada':
+            $incidencias_resueltas = $estado['total'];
+            break;
+    }
+}
+
 // Obtener notificaciones no leídas
 $notificaciones = $db->getRows(
     "SELECT * FROM notificaciones 
@@ -113,6 +150,9 @@ if (isset($_SESSION['success'])) {
     $mensaje = '<div class="alert alert-error">' . $_SESSION['error'] . '</div>';
     unset($_SESSION['error']);
 }
+
+// Obtener funcionalidades disponibles
+$funcionalidades = obtener_funcionalidades_profesor();
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -122,6 +162,7 @@ if (isset($_SESSION['success'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel de Profesor - Sistema de Gestión de Recursos</title>
     <link rel="stylesheet" href="../assets/css/styles.css">
+    <link rel="stylesheet" href="../assets/css/responsive-tables.css">
 </head>
 
 <body>
@@ -132,11 +173,7 @@ if (isset($_SESSION['success'])) {
                 <div>Sistema de Gestión</div>
             </div>
             <div class="sidebar-nav">
-                <a href="dashboard.php" class="nav-item active">Dashboard</a>
-                <a href="../recursos/listar.php" class="nav-item">Recursos</a>
-                <a href="../reservas/listar.php" class="nav-item">Mis Reservas</a>
-                <a href="../reservas/calendario.php" class="nav-item">Calendario</a>
-                <a href="perfil.php" class="nav-item">Mi Perfil</a>
+                <?php echo generar_menu_navegacion('dashboard'); ?>
             </div>
         </div>
 
@@ -185,8 +222,8 @@ if (isset($_SESSION['success'])) {
                     <div class="stat-value"><?php echo $reservas_confirmadas; ?></div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-title">Reservas Completadas</div>
-                    <div class="stat-value"><?php echo $reservas_completadas; ?></div>
+                    <div class="stat-title">Incidencias Reportadas</div>
+                    <div class="stat-value"><?php echo $incidencias_reportadas; ?></div>
                 </div>
             </div>
 
@@ -197,77 +234,94 @@ if (isset($_SESSION['success'])) {
                         <p>No tienes próximas reservas programadas.</p>
                         <a href="../reservas/crear.php" class="btn btn-primary" style="margin-top: 15px;">Crear nueva reserva</a>
                     <?php else: ?>
-                        <table>
-                            <tr>
-                                <th>Recurso</th>
-                                <th>Fecha Inicio</th>
-                                <th>Fecha Fin</th>
-                                <th>Estado</th>
-                            </tr>
-                            <?php foreach ($proximas_reservas as $reserva): ?>
-                                <tr>
-                                    <td><?php echo htmlspecialchars($reserva['recurso_nombre']); ?></td>
-                                    <td><?php echo format_date($reserva['fecha_inicio'], true); ?></td>
-                                    <td><?php echo format_date($reserva['fecha_fin'], true); ?></td>
-                                    <td>
-                                        <?php
-                                        switch ($reserva['estado']) {
-                                            case 'pendiente':
-                                                echo '<span class="badge badge-warning">Pendiente</span>';
-                                                break;
-                                            case 'confirmada':
-                                                echo '<span class="badge badge-success">Confirmada</span>';
-                                                break;
-                                            default:
-                                                echo ucfirst($reserva['estado']);
-                                        }
-                                        ?>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </table>
+                        <div class="table-responsive">
+                            <table class="responsive-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Recurso</th>
+                                        <th scope="col">Fecha Inicio</th>
+                                        <th scope="col">Fecha Fin</th>
+                                        <th scope="col">Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($proximas_reservas as $reserva): ?>
+                                        <tr>
+                                            <td data-label="Recurso"><?php echo htmlspecialchars($reserva['recurso_nombre']); ?></td>
+                                            <td data-label="Fecha Inicio"><?php echo format_date($reserva['fecha_inicio'], true); ?></td>
+                                            <td data-label="Fecha Fin"><?php echo format_date($reserva['fecha_fin'], true); ?></td>
+                                            <td data-label="Estado">
+                                                <?php
+                                                switch ($reserva['estado']) {
+                                                    case 'pendiente':
+                                                        echo '<span class="badge badge-warning">Pendiente</span>';
+                                                        break;
+                                                    case 'confirmada':
+                                                        echo '<span class="badge badge-success">Confirmada</span>';
+                                                        break;
+                                                    default:
+                                                        echo ucfirst($reserva['estado']);
+                                                }
+                                                ?>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
                         <a href="../reservas/listar.php" class="view-all">Ver todas mis reservas</a>
                     <?php endif; ?>
                 </div>
 
                 <div class="card">
-                    <div class="card-title">Actividad Reciente</div>
-                    <?php if (empty($reservas_recientes)): ?>
-                        <p>No hay actividad reciente.</p>
+                    <div class="card-title">Incidencias Recientes</div>
+                    <?php if (empty($incidencias_recientes)): ?>
+                        <p>No hay incidencias reportadas.</p>
+                        <a href="../bitacora/gestionar.php" class="btn btn-primary" style="margin-top: 15px;">Reportar incidencia</a>
                     <?php else: ?>
-                        <table>
-                            <tr>
-                                <th>Recurso</th>
-                                <th>Fecha</th>
-                                <th>Estado</th>
-                            </tr>
-                            <?php foreach ($reservas_recientes as $reserva): ?>
-                                <tr>
-                                    <td><?php echo htmlspecialchars($reserva['recurso_nombre']); ?></td>
-                                    <td><?php echo format_date($reserva['fecha_inicio'], true); ?></td>
-                                    <td>
-                                        <?php
-                                        switch ($reserva['estado']) {
-                                            case 'pendiente':
-                                                echo '<span class="badge badge-warning">Pendiente</span>';
-                                                break;
-                                            case 'confirmada':
-                                                echo '<span class="badge badge-success">Confirmada</span>';
-                                                break;
-                                            case 'cancelada':
-                                                echo '<span class="badge badge-danger">Cancelada</span>';
-                                                break;
-                                            case 'completada':
-                                                echo '<span class="badge badge-info">Completada</span>';
-                                                break;
-                                            default:
-                                                echo $reserva['estado'];
-                                        }
-                                        ?>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </table>
+                        <div class="table-responsive">
+                            <table class="responsive-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Título</th>
+                                        <th scope="col">Estado</th>
+                                        <th scope="col">Fecha Reporte</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($incidencias_recientes as $incidencia): ?>
+                                        <tr>
+                                            <td data-label="Título"><?php echo htmlspecialchars($incidencia['titulo']); ?></td>
+                                            <td data-label="Estado">
+                                                <?php
+                                                switch ($incidencia['estado']) {
+                                                    case 'reportada':
+                                                        echo '<span class="badge badge-warning">Reportada</span>';
+                                                        break;
+                                                    case 'en_revision':
+                                                        echo '<span class="badge badge-info">En Revisión</span>';
+                                                        break;
+                                                    case 'en_proceso':
+                                                        echo '<span class="badge badge-primary">En Proceso</span>';
+                                                        break;
+                                                    case 'resuelta':
+                                                        echo '<span class="badge badge-success">Resuelta</span>';
+                                                        break;
+                                                    case 'cerrada':
+                                                        echo '<span class="badge badge-secondary">Cerrada</span>';
+                                                        break;
+                                                    default:
+                                                        echo ucfirst($incidencia['estado']);
+                                                }
+                                                ?>
+                                            </td>
+                                            <td data-label="Fecha Reporte"><?php echo format_date($incidencia['fecha_reporte'], true); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                        <a href="../bitacora/gestionar.php" class="view-all">Ver todas las incidencias</a>
                     <?php endif; ?>
                 </div>
             </div>
@@ -291,6 +345,27 @@ if (isset($_SESSION['success'])) {
                         <div class="quick-action-icon">👤</div>
                         <div class="quick-action-label">Mi Perfil</div>
                     </a>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Información de Permisos</div>
+                <div class="permissions-info">
+                    <h3>Funcionalidades Disponibles:</h3>
+                    <ul>
+                        <li><strong>📋 Recursos:</strong> Solo lectura - Puedes ver los recursos disponibles pero no modificarlos</li>
+                        <li><strong>📅 Mis Reservas:</strong> Puedes crear, editar y eliminar tus reservas siempre que el recurso no esté ocupado</li>
+                        <li><strong>🗓️ Calendario:</strong> Puedes ver todas las reservas de recursos (tuyas y de otros usuarios)</li>
+                        <li><strong>⚠️ Gestionar Incidencias:</strong> Puedes crear incidencias y editarlas solo durante los primeros 5 minutos</li>
+                    </ul>
+                    
+                    <h3>Restricciones:</h3>
+                    <ul>
+                        <li>No puedes eliminar incidencias</li>
+                        <li>No puedes editar reservas que ya han comenzado</li>
+                        <li>No puedes crear reservas para recursos ya ocupados</li>
+                        <li>No tienes acceso a gestión de usuarios, inventario, mantenimiento o reportes</li>
+                    </ul>
                 </div>
             </div>
         </div>

@@ -231,6 +231,13 @@ $usuarios = $db->getRows(
 
 // Obtener lista de roles para filtros
 $roles = $db->getRows("SELECT id_rol, nombre FROM roles ORDER BY nombre");
+
+// Obtener notificaciones no leídas
+$notificaciones_no_leidas = $db->getRow("
+    SELECT COUNT(*) as total
+    FROM notificaciones_incidencias
+    WHERE id_usuario_destino = ? AND leida = 0
+", [$_SESSION['usuario_id']])['total'] ?? 0;
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -262,6 +269,8 @@ $roles = $db->getRows("SELECT id_rol, nombre FROM roles ORDER BY nombre");
                 <?php if (has_role([ROL_ADMIN, ROL_ACADEMICO])): ?>
                     <a href="../mantenimiento/listar.php" class="nav-item">Mantenimiento</a>
                     <a href="../inventario/listar.php" class="nav-item">Inventario</a>
+                    <a href="../bitacora/gestionar.php" class="nav-item">Gestionar Incidencias</a>
+                    <a href="../admin/notificaciones_incidencias.php" class="nav-item">Notificaciones (<?php echo $notificaciones_no_leidas; ?>)</a>
                     <a href="../reportes/reportes_dashboard.php" class="nav-item active">Reportes</a>
                 <?php endif; ?>
             </div>

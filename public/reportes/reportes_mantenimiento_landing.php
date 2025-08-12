@@ -56,6 +56,13 @@ $recursos_mantenimiento = $db->getRows("
     LIMIT 5
 ");
 
+// Obtener notificaciones no leídas
+$notificaciones_no_leidas = $db->getRow("
+    SELECT COUNT(*) as total
+    FROM notificaciones_incidencias
+    WHERE id_usuario_destino = ? AND leida = 0
+", [$_SESSION['usuario_id']])['total'] ?? 0;
+
 // Verificar si hay mensaje de éxito o error
 $mensaje = '';
 if (isset($_SESSION['success'])) {
@@ -97,6 +104,8 @@ if (isset($_SESSION['success'])) {
                 <?php if (has_role([ROL_ADMIN, ROL_ACADEMICO])): ?>
                     <a href="../mantenimiento/listar.php" class="nav-item active">Mantenimiento</a>
                     <a href="../inventario/listar.php" class="nav-item">Inventario</a>
+                    <a href="../bitacora/gestionar.php" class="nav-item">Gestionar Incidencias</a>
+                    <a href="../admin/notificaciones_incidencias.php" class="nav-item">Notificaciones (<?php echo $notificaciones_no_leidas; ?>)</a>
                     <a href="../reportes/reportes_dashboard.php" class="nav-item active">Reportes</a>
                 <?php endif; ?>
             </div>

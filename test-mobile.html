@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Responsividad Móvil</title>
+    <link rel="stylesheet" href="public/assets/css/styles.css">
+    <link rel="stylesheet" href="public/assets/css/responsive-tables.css">
+    <style>
+        .test-info {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 10000;
+        }
+        
+        .test-info h3 {
+            margin: 0 0 5px 0;
+            font-size: 14px;
+        }
+        
+        .test-info p {
+            margin: 2px 0;
+        }
+        
+        .breakpoint-indicator {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: #007bff;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 10000;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-info">
+        <h3>Test Responsividad</h3>
+        <p>Ancho: <span id="width">-</span>px</p>
+        <p>Alto: <span id="height">-</span>px</p>
+        <p>Breakpoint: <span id="breakpoint">-</span></p>
+        <p>Dispositivo: <span id="device">-</span></p>
+    </div>
+    
+    <div class="breakpoint-indicator" id="breakpoint-indicator">
+        Desktop
+    </div>
+
+    <div class="dashboard">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-icon"></div>
+                <div>Sistema de Gestión</div>
+            </div>
+            <div class="sidebar-nav">
+                <a href="#" class="nav-item active">Dashboard</a>
+                <a href="#" class="nav-item">Usuarios</a>
+                <a href="#" class="nav-item">Recursos</a>
+                <a href="#" class="nav-item">Reservas</a>
+                <a href="#" class="nav-item">Calendario</a>
+                <a href="#" class="nav-item">Mantenimiento</a>
+                <a href="#" class="nav-item">Inventario</a>
+                <a href="#" class="nav-item">Gestionar Incidencias</a>
+                <a href="#" class="nav-item">Notificaciones (3)</a>
+                <a href="#" class="nav-item">Reportes</a>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="top-bar">
+                <h1>Gestión de Inventario</h1>
+                <div class="user-info">
+                    <span class="user-name">Usuario Administrador</span>
+                    <a href="#" class="logout-btn">Cerrar sesión</a>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">Filtros de Búsqueda</h2>
+                <form action="" method="GET" class="filtros">
+                    <div class="filtro-grupo">
+                        <label class="filtro-label">Categoría:</label>
+                        <select name="categoria" class="filtro-select">
+                            <option value="">Todas</option>
+                            <option value="computo">Equipos de Cómputo</option>
+                            <option value="mobiliario">Mobiliario</option>
+                        </select>
+                    </div>
+
+                    <div class="filtro-grupo">
+                        <label class="filtro-label">Ubicación:</label>
+                        <select name="ubicacion" class="filtro-select">
+                            <option value="">Todas</option>
+                            <option value="sala1">Sala de Computación</option>
+                            <option value="oficina">Oficina Administrativa</option>
+                        </select>
+                    </div>
+
+                    <div class="filtro-grupo">
+                        <label class="filtro-label">Estado:</label>
+                        <select name="estado" class="filtro-select">
+                            <option value="">Todos</option>
+                            <option value="disponible">Disponible</option>
+                            <option value="mantenimiento">Mantenimiento</option>
+                        </select>
+                    </div>
+
+                    <div class="filtro-grupo">
+                        <label class="filtro-label">Buscar:</label>
+                        <input type="text" name="busqueda" class="filtro-input" placeholder="Nombre, descripción, proveedor o ubicación">
+                    </div>
+
+                    <button type="submit" class="filtro-btn">Filtrar</button>
+                    <a href="#" class="filtro-btn btn-reset">Resetear</a>
+                    <a href="#" class="filtro-btn btn-agregar">+ Agregar Item</a>
+                </form>
+
+                <div class="table-container">
+                    <div class="table-responsive">
+                        <table class="responsive-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Nombre</th>
+                                    <th scope="col">Categoría</th>
+                                    <th scope="col">Cantidad</th>
+                                    <th scope="col">Estado</th>
+                                    <th scope="col">Ubicación</th>
+                                    <th scope="col">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td data-label="Nombre">
+                                        <strong>Computadora Dell OptiPlex</strong>
+                                        <br><small style="color: #6c757d;">Computadora de escritorio para oficina</small>
+                                    </td>
+                                    <td data-label="Categoría">Equipos de Cómputo</td>
+                                    <td data-label="Cantidad"><strong>5</strong></td>
+                                    <td data-label="Estado">
+                                        <span class="badge badge-disponible">Disponible</span>
+                                    </td>
+                                    <td data-label="Ubicación">Sala de Computación</td>
+                                    <td data-label="Acciones">
+                                        <div class="table-actions">
+                                            <a href="#" class="table-action-btn primary">Ver</a>
+                                            <a href="#" class="table-action-btn warning">Editar</a>
+                                            <a href="#" class="table-action-btn danger">Eliminar</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td data-label="Nombre">
+                                        <strong>Silla de Oficina</strong>
+                                        <br><small style="color: #6c757d;">Silla ergonómica para escritorio</small>
+                                    </td>
+                                    <td data-label="Categoría">Mobiliario</td>
+                                    <td data-label="Cantidad"><strong>12</strong></td>
+                                    <td data-label="Estado">
+                                        <span class="badge badge-mantenimiento">Mantenimiento</span>
+                                    </td>
+                                    <td data-label="Ubicación">Oficina Administrativa</td>
+                                    <td data-label="Acciones">
+                                        <div class="table-actions">
+                                            <a href="#" class="table-action-btn primary">Ver</a>
+                                            <a href="#" class="table-action-btn warning">Editar</a>
+                                            <a href="#" class="table-action-btn danger">Eliminar</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="public/assets/js/main.js"></script>
+    <script>
+        // Función para actualizar información de prueba
+        function updateTestInfo() {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            
+            document.getElementById('width').textContent = width;
+            document.getElementById('height').textContent = height;
+            
+            let breakpoint = 'Desktop';
+            let device = 'Desktop';
+            
+            if (width <= 360) {
+                breakpoint = 'Extra Small Mobile';
+                device = 'Móvil muy pequeño';
+            } else if (width <= 480) {
+                breakpoint = 'Small Mobile';
+                device = 'Móvil pequeño';
+            } else if (width <= 768) {
+                breakpoint = 'Mobile';
+                device = 'Móvil';
+            } else if (width <= 992) {
+                breakpoint = 'Tablet';
+                device = 'Tablet';
+            } else if (width <= 1200) {
+                breakpoint = 'Small Desktop';
+                device = 'Desktop pequeño';
+            } else {
+                breakpoint = 'Large Desktop';
+                device = 'Desktop grande';
+            }
+            
+            document.getElementById('breakpoint').textContent = breakpoint;
+            document.getElementById('device').textContent = device;
+            
+            // Actualizar indicador de breakpoint
+            const indicator = document.getElementById('breakpoint-indicator');
+            indicator.textContent = breakpoint;
+            
+            // Cambiar color según breakpoint
+            const colors = {
+                'Extra Small Mobile': '#dc3545',
+                'Small Mobile': '#fd7e14',
+                'Mobile': '#ffc107',
+                'Tablet': '#20c997',
+                'Small Desktop': '#17a2b8',
+                'Large Desktop': '#6f42c1'
+            };
+            
+            indicator.style.backgroundColor = colors[breakpoint] || '#007bff';
+        }
+        
+        // Actualizar al cargar y al cambiar tamaño
+        window.addEventListener('load', updateTestInfo);
+        window.addEventListener('resize', updateTestInfo);
+        
+        // Actualizar cada segundo para detectar cambios
+        setInterval(updateTestInfo, 1000);
+        
+        // Función para simular diferentes tamaños de pantalla
+        function simulateScreenSize(width) {
+            const viewport = document.querySelector('meta[name="viewport"]');
+            viewport.setAttribute('content', `width=${width}, initial-scale=1.0`);
+            window.dispatchEvent(new Event('resize'));
+        }
+        
+        // Agregar botones de prueba
+        const testButtons = document.createElement('div');
+        testButtons.style.cssText = `
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            z-index: 10001;
+        `;
+        
+        const sizes = [
+            { name: '320px', width: 320 },
+            { name: '375px', width: 375 },
+            { name: '480px', width: 480 },
+            { name: '768px', width: 768 },
+            { name: '1024px', width: 1024 }
+        ];
+        
+        sizes.forEach(size => {
+            const btn = document.createElement('button');
+            btn.textContent = size.name;
+            btn.style.cssText = `
+                padding: 5px 10px;
+                font-size: 12px;
+                background: #007bff;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+            `;
+            btn.onclick = () => simulateScreenSize(size.width);
+            testButtons.appendChild(btn);
+        });
+        
+        document.body.appendChild(testButtons);
+    </script>
+</body>
+</html> 
+ 

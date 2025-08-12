@@ -1,0 +1,6 @@
+[10-Aug-2025 20:59:00 America/Santiago] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in /Applications/XAMPP/xamppfiles/htdocs/gestion_recursos_digitales-main/test_profesor_roles.php on line 15
+[10-Aug-2025 20:59:00 America/Santiago] PHP Fatal error:  Uncaught Error: Call to undefined function obtener_funcionalidades_profesor() in /Applications/XAMPP/xamppfiles/htdocs/gestion_recursos_digitales-main/test_profesor_roles.php:26
+Stack trace:
+#0 {main}
+  thrown in /Applications/XAMPP/xamppfiles/htdocs/gestion_recursos_digitales-main/test_profesor_roles.php on line 26
+[12-Aug-2025 10:15:29 America/Santiago] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in /Applications/XAMPP/xamppfiles/htdocs/gestion_recursos_digitales-main/test_menu_functions.php on line 14

@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Módulo de Reportes - Dashboard principal
+ * Dashboard de Reportes
  */
 
 // Iniciar sesión
@@ -11,14 +11,13 @@ session_start();
 require_once '../../config/config.php';
 require_once '../../config/database.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/permissions.php';
 
 // Verificar que el usuario esté logueado y tenga permisos
 require_login();
-
-// Solo administradores y académicos pueden acceder a reportes
 if (!has_role([ROL_ADMIN, ROL_ACADEMICO])) {
-    $_SESSION['error'] = "No tienes permisos para acceder al módulo de reportes";
-    redirect('../admin/dashboard.php');
+    $_SESSION['error'] = "No tienes permisos para acceder a esta página";
+    redirect('../index.php');
     exit;
 }
 
@@ -79,6 +78,13 @@ $sql = "SELECT COUNT(*) as total FROM mantenimiento";
 $resultado = $db->getRow($sql);
 $estadisticas['total_mantenimientos'] = $resultado ? $resultado['total'] : 0;
 
+// Obtener notificaciones no leídas
+$notificaciones_no_leidas = $db->getRow("
+    SELECT COUNT(*) as total
+    FROM notificaciones_incidencias
+    WHERE id_usuario_destino = ? AND leida = 0
+", [$_SESSION['usuario_id']])['total'] ?? 0;
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -99,18 +105,7 @@ $estadisticas['total_mantenimientos'] = $resultado ? $resultado['total'] : 0;
                 <div>Sistema de Gestión</div>
             </div>
             <div class="sidebar-nav">
-                <a href="../admin/dashboard.php" class="nav-item">Dashboard</a>
-                <?php if (has_role([ROL_ADMIN, ROL_ACADEMICO])): ?>
-                    <a href="../usuarios/listar.php" class="nav-item">Usuarios</a>
-                <?php endif; ?>
-                <a href="../recursos/listar.php" class="nav-item">Recursos</a>
-                <a href="../reservas/listar.php" class="nav-item">Reservas</a>
-                <a href="../reservas/calendario.php" class="nav-item">Calendario</a>
-                <?php if (has_role([ROL_ADMIN, ROL_ACADEMICO])): ?>
-                    <a href="../mantenimiento/listar.php" class="nav-item">Mantenimiento</a>
-                    <a href="../inventario/listar.php" class="nav-item">Inventario</a>
-                    <a href="../reportes/reportes_dashboard.php" class="nav-item active">Reportes</a>
-                <?php endif; ?>
+                <?php echo generar_menu_navegacion('reportes'); ?>
             </div>
         </div>
 

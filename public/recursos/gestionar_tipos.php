@@ -115,6 +115,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Obtener lista de tipos de recursos
 $tipos = $db->getRows("SELECT * FROM tipos_recursos ORDER BY nombre");
 
+// Obtener notificaciones no leídas
+$notificaciones_no_leidas = $db->getRow("
+    SELECT COUNT(*) as total
+    FROM notificaciones_incidencias
+    WHERE id_usuario_destino = ? AND leida = 0
+", [$_SESSION['usuario_id']])['total'] ?? 0;
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -216,6 +223,8 @@ $tipos = $db->getRows("SELECT * FROM tipos_recursos ORDER BY nombre");
                 <a href="../reservas/calendario.php" class="nav-item">Calendario</a>
                 <a href="../mantenimiento/listar.php" class="nav-item">Mantenimiento</a>
                 <a href="../inventario/listar.php" class="nav-item">Inventario</a>
+                <a href="../bitacora/gestionar.php" class="nav-item">Gestionar Incidencias</a>
+                <a href="../admin/notificaciones_incidencias.php" class="nav-item">Notificaciones (<?php echo $notificaciones_no_leidas; ?>)</a>
                 <a href="../reportes/index.php" class="nav-item">Reportes</a>
             </div>
         </div>

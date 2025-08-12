@@ -11,9 +11,19 @@ session_start();
 require_once '../../config/config.php';
 require_once '../../config/database.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/permissions.php';
 
 // Verificar que el usuario esté logueado
 require_login();
+
+// Verificar permisos específicos para profesores
+if ($_SESSION['usuario_rol'] == ROL_PROFESOR) {
+    if (!profesor_puede_acceder('recursos_lectura')) {
+        $_SESSION['error'] = "No tienes permisos para acceder a esta página";
+        redirect('../profesor/dashboard.php');
+        exit;
+    }
+}
 
 // Obtener instancia de la base de datos
 $db = Database::getInstance();
@@ -78,6 +88,16 @@ if (isset($_SESSION['success'])) {
 
 // Determinar si el usuario tiene permiso para crear/editar recursos
 $puede_modificar = has_role([ROL_ADMIN, ROL_ACADEMICO]);
+
+// Determinar si es profesor (solo lectura)
+$es_profesor = $_SESSION['usuario_rol'] == ROL_PROFESOR;
+
+// Obtener notificaciones no leídas
+$notificaciones_no_leidas = $db->getRow("
+    SELECT COUNT(*) as total
+    FROM notificaciones_incidencias
+    WHERE id_usuario_destino = ? AND leida = 0
+", [$_SESSION['usuario_id']])['total'] ?? 0;
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -97,14 +117,7 @@ $puede_modificar = has_role([ROL_ADMIN, ROL_ACADEMICO]);
                 <div>Sistema de Gestión</div>
             </div>
             <div class="sidebar-nav">
-                <a href="../admin/dashboard.php" class="nav-item">Dashboard</a>
-                <a href="../usuarios/listar.php" class="nav-item">Usuarios</a>
-                <a href="../recursos/listar.php" class="nav-item active">Recursos</a>
-                <a href="../reservas/listar.php" class="nav-item">Reservas</a>
-                <a href="../reservas/calendario.php" class="nav-item">Calendario</a>
-                <a href="../mantenimiento/listar.php" class="nav-item">Mantenimiento</a>
-                <a href="../inventario/listar.php" class="nav-item">Inventario</a>
-                <a href="../reportes/index.php" class="nav-item">Reportes</a>
+                <?php echo generar_menu_navegacion('recursos'); ?>
             </div>
         </div>
 
@@ -157,7 +170,17 @@ $puede_modificar = has_role([ROL_ADMIN, ROL_ACADEMICO]);
                         <a href="crear.php" class="btn-agregar">+ Agregar Recurso</a>
                         <a href="gestionar_tipos.php" class="btn btn-secondary" style="margin-left: 10px;">Gestionar Tipos</a>
                     <?php endif; ?>
+                    
+                    <?php if ($es_profesor): ?>
+                        <a href="../reservas/crear.php" class="btn btn-primary" style="margin-left: 10px;">📅 Crear Reserva</a>
+                    <?php endif; ?>
                 </form>
+
+                <?php if ($es_profesor): ?>
+                    <div class="alert alert-info" style="margin-bottom: 20px;">
+                        <strong>📋 Modo Solo Lectura:</strong> Como profesor, solo puedes ver los recursos disponibles. Para crear reservas, usa el botón "Crear Reserva" o ve a la sección de "Mis Reservas".
+                    </div>
+                <?php endif; ?>
 
                 <div class="table-container">
                     <?php if (empty($recursos)): ?>
@@ -221,6 +244,11 @@ $puede_modificar = has_role([ROL_ADMIN, ROL_ACADEMICO]);
                                                         onclick="return confirm('¿Estás seguro de eliminar este recurso?');"
                                                         class="accion-btn btn-eliminar">Eliminar</a>
                                                 <?php endif; ?>
+                                            <?php endif; ?>
+                                            
+                                            <?php if ($es_profesor && $recurso['estado'] == 'disponible' && $recurso['disponible']): ?>
+                                                <a href="../reservas/crear.php?recurso=<?php echo $recurso['id_recurso']; ?>" 
+                                                   class="accion-btn btn-primary">📅 Reservar</a>
                                             <?php endif; ?>
                                         </td>
                                     </tr>

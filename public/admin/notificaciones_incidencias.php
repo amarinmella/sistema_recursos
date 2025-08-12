@@ -1,8 +1,7 @@
 <?php
 
 /**
- * Notificaciones de Incidencias - Dashboard Administrador
- * Muestra todas las notificaciones de incidencias para el administrador
+ * Notificaciones de Incidencias
  */
 
 // Iniciar sesión
@@ -12,10 +11,11 @@ session_start();
 require_once '../../config/config.php';
 require_once '../../config/database.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/permissions.php';
 
-// Verificar que el usuario sea administrador
+// Verificar que el usuario esté logueado y tenga permisos
 require_login();
-if ($_SESSION['usuario_rol'] != ROL_ADMIN) {
+if (!has_role([ROL_ADMIN, ROL_ACADEMICO])) {
     $_SESSION['error'] = "No tienes permisos para acceder a esta página";
     redirect('../index.php');
     exit;
@@ -312,16 +312,7 @@ $stats = $db->getRow("
                 <div>Sistema de Gestión</div>
             </div>
             <div class="sidebar-nav">
-                <a href="dashboard.php" class="nav-item">Dashboard</a>
-                <a href="../usuarios/listar.php" class="nav-item">Usuarios</a>
-                <a href="../recursos/listar.php" class="nav-item">Recursos</a>
-                <a href="../reservas/listar.php" class="nav-item">Reservas</a>
-                <a href="../reservas/calendario.php" class="nav-item">Calendario</a>
-                <a href="../mantenimiento/listar.php" class="nav-item">Mantenimiento</a>
-                <a href="../inventario/listar.php" class="nav-item">Inventario</a>
-                <a href="../bitacora/gestionar.php" class="nav-item">Gestionar Incidencias</a>
-                <a href="notificaciones_incidencias.php" class="nav-item active">Notificaciones</a>
-                <a href="../reportes/reportes_dashboard.php" class="nav-item">Reportes</a>
+                <?php echo generar_menu_navegacion('notificaciones'); ?>
             </div>
         </div>
 

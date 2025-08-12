@@ -11,6 +11,7 @@ session_start();
 require_once '../../config/config.php';
 require_once '../../config/database.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/permissions.php';
 
 // Verificar que el usuario sea administrador
 require_login();
@@ -115,16 +116,7 @@ $incidencias_recientes = $db->getRows("
                 <div>Sistema de Gestión</div>
             </div>
             <div class="sidebar-nav">
-                <a href="dashboard.php" class="nav-item active">Dashboard</a>
-                <a href="../usuarios/listar.php" class="nav-item">Usuarios</a>
-                <a href="../recursos/listar.php" class="nav-item">Recursos</a>
-                <a href="../reservas/listar.php" class="nav-item">Reservas</a>
-                <a href="../reservas/calendario.php" class="nav-item">Calendario</a>
-                <a href="../mantenimiento/listar.php" class="nav-item">Mantenimiento</a>
-                <a href="../inventario/listar.php" class="nav-item">Inventario</a>
-                <a href="../bitacora/gestionar.php" class="nav-item">Gestionar Incidencias</a>
-                <a href="notificaciones_incidencias.php" class="nav-item">Notificaciones (<?php echo $notificaciones_no_leidas; ?>)</a>
-                <a href="../reportes/reportes_dashboard.php" class="nav-item">Reportes</a>
+                <?php echo generar_menu_navegacion('dashboard'); ?>
             </div>
         </div>
 

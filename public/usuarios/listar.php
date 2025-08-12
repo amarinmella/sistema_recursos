@@ -11,6 +11,7 @@ session_start();
 require_once '../../config/config.php';
 require_once '../../config/database.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/permissions.php';
 
 // Verificar que el usuario esté logueado y tenga permisos
 require_login();
@@ -81,6 +82,13 @@ if (isset($_SESSION['success'])) {
 
 // Determinar si el usuario tiene permiso para crear/editar usuarios
 $puede_modificar = has_role(ROL_ADMIN);
+
+// Obtener notificaciones no leídas
+$notificaciones_no_leidas = $db->getRow("
+    SELECT COUNT(*) as total
+    FROM notificaciones_incidencias
+    WHERE id_usuario_destino = ? AND leida = 0
+", [$_SESSION['usuario_id']])['total'] ?? 0;
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -100,14 +108,7 @@ $puede_modificar = has_role(ROL_ADMIN);
                 <div>Sistema de Gestión</div>
             </div>
             <div class="sidebar-nav">
-                <a href="../admin/dashboard.php" class="nav-item">Dashboard</a>
-                <a href="../usuarios/listar.php" class="nav-item active">Usuarios</a>
-                <a href="../recursos/listar.php" class="nav-item">Recursos</a>
-                <a href="../reservas/listar.php" class="nav-item">Reservas</a>
-                <a href="../reservas/calendario.php" class="nav-item">Calendario</a>
-                <a href="../mantenimiento/listar.php" class="nav-item">Mantenimiento</a>
-                <a href="../inventario/listar.php" class="nav-item">Inventario</a>
-                <a href="../reportes/index.php" class="nav-item">Reportes</a>
+                <?php echo generar_menu_navegacion('usuarios'); ?>
             </div>
         </div>
 

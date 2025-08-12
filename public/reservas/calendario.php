@@ -11,9 +11,20 @@ session_start();
 require_once '../../config/config.php';
 require_once '../../config/database.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/permissions.php';
 
 // Verificar que el usuario esté logueado
 require_login();
+
+// Verificar permisos específicos para profesores
+$es_admin = has_role([ROL_ADMIN, ROL_ACADEMICO]);
+$es_profesor = $_SESSION['usuario_rol'] == ROL_PROFESOR;
+
+if ($es_profesor && !profesor_puede_acceder('calendario_ver')) {
+    $_SESSION['error'] = "No tienes permisos para acceder a esta página";
+    redirect('../profesor/dashboard.php');
+    exit;
+}
 
 // Obtener instancia de la base de datos
 $db = Database::getInstance();
@@ -365,18 +376,7 @@ function colorEstado($estado)
                 <div>Sistema de Gestión</div>
             </div>
             <div class="sidebar-nav">
-                <a href="../admin/dashboard.php" class="nav-item">Dashboard</a>
-                <?php if (has_role([ROL_ADMIN, ROL_ACADEMICO])): ?>
-                    <a href="../usuarios/listar.php" class="nav-item">Usuarios</a>
-                <?php endif; ?>
-                <a href="../recursos/listar.php" class="nav-item">Recursos</a>
-                <a href="../reservas/listar.php" class="nav-item">Reservas</a>
-                <a href="../reservas/calendario.php" class="nav-item active">Calendario</a>
-                <?php if (has_role([ROL_ADMIN, ROL_ACADEMICO])): ?>
-                    <a href="../mantenimiento/listar.php" class="nav-item">Mantenimiento</a>
-                    <a href="../inventario/listar.php" class="nav-item">Inventario</a>
-                    <a href="../reportes/index.php" class="nav-item">Reportes</a>
-                <?php endif; ?>
+                <?php echo generar_menu_navegacion('calendario'); ?>
             </div>
         </div>
 

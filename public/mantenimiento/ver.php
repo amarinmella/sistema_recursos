@@ -235,6 +235,13 @@ $reservas_afectadas = $db->getRows($sql_reservas, [
     $mantenimiento['fecha_inicio'],
     $mantenimiento['fecha_inicio']
 ]);
+
+// Obtener notificaciones no leídas
+$notificaciones_no_leidas = $db->getRow("
+    SELECT COUNT(*) as total
+    FROM notificaciones_incidencias
+    WHERE id_usuario_destino = ? AND leida = 0
+", [$_SESSION['usuario_id']])['total'] ?? 0;
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -308,6 +315,8 @@ $reservas_afectadas = $db->getRows($sql_reservas, [
                 <?php if (has_role([ROL_ADMIN, ROL_ACADEMICO])): ?>
                     <a href="../mantenimiento/listar.php" class="nav-item active">Mantenimiento</a>
                     <a href="../inventario/listar.php" class="nav-item">Inventario</a>
+                    <a href="../bitacora/gestionar.php" class="nav-item">Gestionar Incidencias</a>
+                    <a href="../admin/notificaciones_incidencias.php" class="nav-item">Notificaciones (<?php echo $notificaciones_no_leidas; ?>)</a>
                     <a href="../reportes/reportes_dashboard.php" class="nav-item">Reportes</a>
                 <?php endif; ?>
             </div>

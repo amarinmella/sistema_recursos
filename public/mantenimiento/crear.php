@@ -55,6 +55,13 @@ if (isset($_SESSION['success'])) {
     unset($_SESSION['error']);
 }
 
+// Obtener notificaciones no leídas
+$notificaciones_no_leidas = $db->getRow("
+    SELECT COUNT(*) as total
+    FROM notificaciones_incidencias
+    WHERE id_usuario_destino = ? AND leida = 0
+", [$_SESSION['usuario_id']])['total'] ?? 0;
+
 // Procesar el formulario si se envió
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Obtener y validar datos
@@ -156,8 +163,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             SELECT DISTINCT r.id_usuario, r.id_reserva
             FROM reservas r
             WHERE r.id_recurso = ?
-            AND r.estado IN ('pendiente', 'confirmada')
             AND r.fecha_inicio > NOW()
+            AND r.estado IN ('pendiente', 'confirmada')
         ";
 
         $usuarios_afectados = $db->getRows($sql_reservas, [$id_recurso]);
@@ -216,6 +223,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php if (has_role([ROL_ADMIN, ROL_ACADEMICO])): ?>
                     <a href="../mantenimiento/listar.php" class="nav-item active">Mantenimiento</a>
                     <a href="../inventario/listar.php" class="nav-item">Inventario</a>
+                    <a href="../bitacora/gestionar.php" class="nav-item">Gestionar Incidencias</a>
+                    <a href="../admin/notificaciones_incidencias.php" class="nav-item">Notificaciones (<?php echo $notificaciones_no_leidas; ?>)</a>
                     <a href="../reportes/reportes_dashboard.php" class="nav-item">Reportes</a>
                 <?php endif; ?>
             </div>

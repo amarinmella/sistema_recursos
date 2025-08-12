@@ -190,3 +190,219 @@ function csrf_input()
     $token = generate_csrf_token();
     return '<input type="hidden" name="csrf_token" value="' . $token . '">';
 }
+
+/**
+ * Obtiene el icono para una funcionalidad específica
+ * 
+ * @param string $funcionalidad Nombre de la funcionalidad
+ * @return string Icono emoji correspondiente
+ */
+function obtener_icono_funcionalidad($funcionalidad)
+{
+    $iconos = [
+        'dashboard' => '🏠',
+        'usuarios' => '👥',
+        'recursos' => '📋',
+        'reservas' => '📅',
+        'calendario' => '🗓️',
+        'mantenimiento' => '🔧',
+        'inventario' => '📦',
+        'incidencias' => '⚠️',
+        'notificaciones' => '🔔',
+        'reportes' => '📊',
+        'perfil' => '👤'
+    ];
+
+    return $iconos[$funcionalidad] ?? '📄';
+}
+
+/**
+ * Genera el menú de navegación según el rol del usuario
+ * 
+ * @param string $pagina_activa Página actualmente activa
+ * @return string HTML del menú de navegación
+ */
+function generar_menu_navegacion($pagina_activa = '')
+{
+    if (!is_logged_in()) {
+        return '';
+    }
+
+    $rol = $_SESSION['usuario_rol'];
+    $menu_html = '';
+
+    // Menú para administradores
+    if ($rol == ROL_ADMIN) {
+        $menu_items = [
+            'dashboard' => [
+                'url' => '../admin/dashboard.php',
+                'texto' => '🏠 Dashboard',
+                'icono' => '🏠'
+            ],
+            'usuarios' => [
+                'url' => '../usuarios/listar.php',
+                'texto' => '👥 Usuarios',
+                'icono' => '👥'
+            ],
+            'recursos' => [
+                'url' => '../recursos/listar.php',
+                'texto' => '📋 Recursos',
+                'icono' => '📋'
+            ],
+            'reservas' => [
+                'url' => '../reservas/listar.php',
+                'texto' => '📅 Reservas',
+                'icono' => '📅'
+            ],
+            'calendario' => [
+                'url' => '../reservas/calendario.php',
+                'texto' => '🗓️ Calendario',
+                'icono' => '🗓️'
+            ],
+            'mantenimiento' => [
+                'url' => '../mantenimiento/listar.php',
+                'texto' => '🔧 Mantenimiento',
+                'icono' => '🔧'
+            ],
+            'inventario' => [
+                'url' => '../inventario/listar.php',
+                'texto' => '📦 Inventario',
+                'icono' => '📦'
+            ],
+            'incidencias' => [
+                'url' => '../bitacora/gestionar.php',
+                'texto' => '⚠️ Gestionar Incidencias',
+                'icono' => '⚠️'
+            ],
+            'notificaciones' => [
+                'url' => '../admin/notificaciones_incidencias.php',
+                'texto' => '🔔 Notificaciones',
+                'icono' => '🔔'
+            ],
+            'reportes' => [
+                'url' => '../reportes/reportes_dashboard.php',
+                'texto' => '📊 Reportes',
+                'icono' => '📊'
+            ]
+        ];
+    }
+    // Menú para profesores
+    elseif ($rol == ROL_PROFESOR) {
+        $menu_items = [
+            'dashboard' => [
+                'url' => '../profesor/dashboard.php',
+                'texto' => '🏠 Dashboard',
+                'icono' => '🏠'
+            ],
+            'recursos' => [
+                'url' => '../recursos/listar.php',
+                'texto' => '📋 Recursos',
+                'icono' => '📋'
+            ],
+            'reservas' => [
+                'url' => '../reservas/listar.php',
+                'texto' => '📅 Mis Reservas',
+                'icono' => '📅'
+            ],
+            'calendario' => [
+                'url' => '../reservas/calendario.php',
+                'texto' => '🗓️ Calendario',
+                'icono' => '🗓️'
+            ],
+            'incidencias' => [
+                'url' => '../bitacora/gestionar.php',
+                'texto' => '⚠️ Gestionar Incidencias',
+                'icono' => '⚠️'
+            ],
+            'perfil' => [
+                'url' => '../profesor/perfil.php',
+                'texto' => '👤 Mi Perfil',
+                'icono' => '👤'
+            ]
+        ];
+    }
+    // Menú para académicos
+    elseif ($rol == ROL_ACADEMICO) {
+        $menu_items = [
+            'dashboard' => [
+                'url' => '../profesor/dashboard.php',
+                'texto' => '🏠 Dashboard',
+                'icono' => '🏠'
+            ],
+            'recursos' => [
+                'url' => '../recursos/listar.php',
+                'texto' => '📋 Recursos',
+                'icono' => '📋'
+            ],
+            'reservas' => [
+                'url' => '../reservas/listar.php',
+                'texto' => '📅 Mis Reservas',
+                'icono' => '📅'
+            ],
+            'calendario' => [
+                'url' => '../reservas/calendario.php',
+                'texto' => '🗓️ Calendario',
+                'icono' => '🗓️'
+            ],
+            'incidencias' => [
+                'url' => '../bitacora/gestionar.php',
+                'texto' => '⚠️ Gestionar Incidencias',
+                'icono' => '⚠️'
+            ],
+            'perfil' => [
+                'url' => '../profesor/perfil.php',
+                'texto' => '👤 Mi Perfil',
+                'icono' => '👤'
+            ]
+        ];
+    }
+    // Menú para estudiantes
+    elseif ($rol == ROL_ESTUDIANTE) {
+        $menu_items = [
+            'dashboard' => [
+                'url' => '../profesor/dashboard.php',
+                'texto' => '🏠 Dashboard',
+                'icono' => '🏠'
+            ],
+            'recursos' => [
+                'url' => '../recursos/listar.php',
+                'texto' => '📋 Recursos',
+                'icono' => '📋'
+            ],
+            'reservas' => [
+                'url' => '../reservas/listar.php',
+                'texto' => '📅 Mis Reservas',
+                'icono' => '📅'
+            ],
+            'calendario' => [
+                'url' => '../reservas/calendario.php',
+                'texto' => '🗓️ Calendario',
+                'icono' => '🗓️'
+            ],
+            'incidencias' => [
+                'url' => '../bitacora/reportar.php',
+                'texto' => '⚠️ Reportar Incidencia',
+                'icono' => '⚠️'
+            ],
+            'perfil' => [
+                'url' => '../profesor/perfil.php',
+                'texto' => '👤 Mi Perfil',
+                'icono' => '👤'
+            ]
+        ];
+    }
+    else {
+        return '';
+    }
+
+    // Generar HTML del menú
+    foreach ($menu_items as $key => $item) {
+        $active_class = ($pagina_activa == $key) ? 'active' : '';
+        $menu_html .= '<a href="' . $item['url'] . '" class="nav-item ' . $active_class . '">';
+        $menu_html .= '<span class="nav-icon">' . $item['icono'] . '</span>';
+        $menu_html .= '<span class="nav-text">' . $item['texto'] . '</span>';
+        $menu_html .= '</a>';
+    }
+
+    return $menu_html;
+}

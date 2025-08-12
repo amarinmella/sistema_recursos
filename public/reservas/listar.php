@@ -11,9 +11,20 @@ session_start();
 require_once '../../config/config.php';
 require_once '../../config/database.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/permissions.php';
 
 // Verificar que el usuario esté logueado
 require_login();
+
+// Verificar permisos específicos para profesores
+$es_admin = has_role([ROL_ADMIN, ROL_ACADEMICO]);
+$es_profesor = $_SESSION['usuario_rol'] == ROL_PROFESOR;
+
+if ($es_profesor && !profesor_puede_acceder('reservas_listar')) {
+    $_SESSION['error'] = "No tienes permisos para acceder a esta página";
+    redirect('../profesor/dashboard.php');
+    exit;
+}
 
 // Obtener instancia de la base de datos
 $db = Database::getInstance();
@@ -38,7 +49,7 @@ $condiciones = [];
 $params = [];
 
 // Si no es administrador o académico, solo mostrar las reservas propias
-if (!has_role([ROL_ADMIN, ROL_ACADEMICO])) {
+if (!$es_admin) {
     $condiciones[] = "r.id_usuario = ?";
     $params[] = $_SESSION['usuario_id'];
 } else if ($filtro_usuario > 0) {
@@ -82,7 +93,7 @@ $recursos = $db->getRows("SELECT id_recurso, nombre FROM recursos WHERE disponib
 
 // Obtener usuarios para el filtro (solo admin y académico)
 $usuarios = [];
-if (has_role([ROL_ADMIN, ROL_ACADEMICO])) {
+if ($es_admin) {
     $usuarios = $db->getRows("SELECT id_usuario, nombre, apellido FROM usuarios ORDER BY apellido, nombre");
 }
 
@@ -103,7 +114,14 @@ if (isset($_SESSION['success'])) {
 $puede_crear = true;
 
 // Determinar si el usuario puede gestionar reservas de otros (Admin o Académico)
-$puede_gestionar = has_role([ROL_ADMIN, ROL_ACADEMICO]);
+$puede_gestionar = $es_admin;
+
+// Obtener notificaciones no leídas
+$notificaciones_no_leidas = $db->getRow("
+    SELECT COUNT(*) as total
+    FROM notificaciones_incidencias
+    WHERE id_usuario_destino = ? AND leida = 0
+", [$_SESSION['usuario_id']])['total'] ?? 0;
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -123,18 +141,7 @@ $puede_gestionar = has_role([ROL_ADMIN, ROL_ACADEMICO]);
                 <div>Sistema de Gestión</div>
             </div>
             <div class="sidebar-nav">
-                <a href="../admin/dashboard.php" class="nav-item">Dashboard</a>
-                <?php if (has_role([ROL_ADMIN, ROL_ACADEMICO])): ?>
-                    <a href="../usuarios/listar.php" class="nav-item">Usuarios</a>
-                <?php endif; ?>
-                <a href="../recursos/listar.php" class="nav-item">Recursos</a>
-                <a href="../reservas/listar.php" class="nav-item active">Reservas</a>
-                <a href="../reservas/calendario.php" class="nav-item">Calendario</a>
-                <?php if (has_role([ROL_ADMIN, ROL_ACADEMICO])): ?>
-                    <a href="../mantenimiento/listar.php" class="nav-item">Mantenimiento</a>
-                    <a href="../inventario/listar.php" class="nav-item">Inventario</a>
-                    <a href="../reportes/index.php" class="nav-item">Reportes</a>
-                <?php endif; ?>
+                <?php echo generar_menu_navegacion('reservas'); ?>
             </div>
         </div>
 
@@ -163,7 +170,7 @@ $puede_gestionar = has_role([ROL_ADMIN, ROL_ACADEMICO]);
                         </select>
                     </div>
 
-                    <?php if (has_role([ROL_ADMIN, ROL_ACADEMICO])): ?>
+                    <?php if ($es_admin): ?>
                         <div class="filtro-grupo">
                             <label class="filtro-label">Usuario:</label>
                             <select name="usuario" class="filtro-select">
@@ -222,7 +229,7 @@ $puede_gestionar = has_role([ROL_ADMIN, ROL_ACADEMICO]);
                                     <th>Recurso</th>
                                     <th>Fecha Inicio</th>
                                     <th>Fecha Fin</th>
-                                    <?php if (has_role([ROL_ADMIN, ROL_ACADEMICO])): ?>
+                                    <?php if ($es_admin): ?>
                                         <th>Usuario</th>
                                     <?php endif; ?>
                                     <th>Estado</th>
@@ -236,7 +243,7 @@ $puede_gestionar = has_role([ROL_ADMIN, ROL_ACADEMICO]);
                                         <td><?php echo htmlspecialchars($reserva['recurso_nombre']); ?></td>
                                         <td><?php echo format_date($reserva['fecha_inicio'], true); ?></td>
                                         <td><?php echo format_date($reserva['fecha_fin'], true); ?></td>
-                                        <?php if (has_role([ROL_ADMIN, ROL_ACADEMICO])): ?>
+                                        <?php if ($es_admin): ?>
                                             <td><?php echo htmlspecialchars($reserva['nombre'] . ' ' . $reserva['apellido']); ?></td>
                                         <?php endif; ?>
                                         <td>
@@ -267,14 +274,22 @@ $puede_gestionar = has_role([ROL_ADMIN, ROL_ACADEMICO]);
                                             <?php
                                             // Definir permisos: el usuario es propietario o tiene permisos de gestión
                                             $es_propietario = ($reserva['id_usuario'] == $_SESSION['usuario_id']);
-                                            // Permite editar si el usuario es propietario o tiene permisos de gestión y la reserva está en estado pendiente o confirmada
-                                            $puede_editar = ($es_propietario || $puede_gestionar) && in_array($reserva['estado'], ['pendiente', 'confirmada']);
-                                            // Permite eliminar si es propietario o tiene permisos de gestión (se puede eliminar siempre que la reserva no haya iniciado; elimina la restricción de fecha si así lo deseas)
-                                            $puede_eliminar = ($es_propietario || $puede_gestionar) && (strtotime($reserva['fecha_inicio']) > time());
-                                            // Otras acciones
-                                            $puede_cancelar = ($es_propietario || $puede_gestionar) && in_array($reserva['estado'], ['pendiente', 'confirmada']) && (strtotime($reserva['fecha_fin']) > time());
-                                            $puede_confirmar = $puede_gestionar && $reserva['estado'] === 'pendiente';
-                                            $puede_completar = $puede_gestionar && $reserva['estado'] === 'confirmada';
+                                            
+                                            // Para profesores, verificar permisos específicos
+                                            if ($es_profesor) {
+                                                $puede_editar = $es_propietario && profesor_puede_editar_reserva($reserva['id_reserva']);
+                                                $puede_eliminar = $es_propietario && profesor_puede_eliminar_reserva($reserva['id_reserva']);
+                                                $puede_cancelar = $es_propietario && in_array($reserva['estado'], ['pendiente', 'confirmada']) && (strtotime($reserva['fecha_fin']) > time());
+                                                $puede_confirmar = false; // Los profesores no pueden confirmar reservas
+                                                $puede_completar = false; // Los profesores no pueden completar reservas
+                                            } else {
+                                                // Para administradores, mantener la lógica original
+                                                $puede_editar = ($es_propietario || $puede_gestionar) && in_array($reserva['estado'], ['pendiente', 'confirmada']);
+                                                $puede_eliminar = ($es_propietario || $puede_gestionar) && (strtotime($reserva['fecha_inicio']) > time());
+                                                $puede_cancelar = ($es_propietario || $puede_gestionar) && in_array($reserva['estado'], ['pendiente', 'confirmada']) && (strtotime($reserva['fecha_fin']) > time());
+                                                $puede_confirmar = $puede_gestionar && $reserva['estado'] === 'pendiente';
+                                                $puede_completar = $puede_gestionar && $reserva['estado'] === 'confirmada';
+                                            }
                                             ?>
 
                                             <?php if ($puede_editar && strtotime($reserva['fecha_inicio']) > time()): ?>
